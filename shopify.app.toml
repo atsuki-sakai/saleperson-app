@@ -3,7 +3,7 @@
 client_id = "06d118204ece9125d19ace950e69ac2f"
 name = "saleperson-app"
 handle = "saleperson-app"
-application_url = "https://derived-developments-describing-ericsson.trycloudflare.com"
+application_url = "https://saleperson-app-749413793665.asia-northeast1.run.app"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://derived-developments-describing-ericsson.trycloudflare.com/auth/callback",
-  "https://derived-developments-describing-ericsson.trycloudflare.com/auth/shopify/callback",
-  "https://derived-developments-describing-ericsson.trycloudflare.com/api/auth/callback"
+  "https://saleperson-app-749413793665.asia-northeast1.run.app/auth/callback",
+  "https://saleperson-app-749413793665.asia-northeast1.run.app/auth/shopify/callback",
+  "https://saleperson-app-749413793665.asia-northeast1.run.app/api/auth/callback"
 ]
 
 [webhooks]
