@@ -23,8 +23,7 @@ import { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import { useNavigate, Form, useLoaderData } from "@remix-run/react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { billing, session } = await authenticate.admin(request);
-  const shop = session.shop.split(".myshopify.com")[0];
+  const { billing } = await authenticate.admin(request);
 
   const billingCheck = await billing.check();
   return { billingCheck };

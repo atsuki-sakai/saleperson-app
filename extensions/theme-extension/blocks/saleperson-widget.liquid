@@ -51,7 +51,7 @@
 <div class="salesperson-chat-widget">
   {% unless request.page_type == 'customers/login' or request.page_type == 'customers/register' %}
     {% if customer %}
-      <p class="salesperson-chat-widget__text">{{ customer.name }}さん</p>
+     {% comment %} // ここでNext.jsで作成したChatWidgetを呼び出す {% endcomment %}
     {% else %}
       <div class="salesperson-chat-widget__login">
         <p class="salesperson-chat-widget__text">ログインしてパーソナライズされた接客を体験ください。</p>

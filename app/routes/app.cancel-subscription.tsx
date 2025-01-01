@@ -1,9 +1,9 @@
-import { LoaderFunctionArgs, redirect } from "@remix-run/node";
+import { LoaderFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import { LITE_PLAN, MONTHLY_PLAN, ANNUAL_PLAN } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { billing, session } = await authenticate.admin(request);
+  const { billing, session, redirect } = await authenticate.admin(request);
   const shop = session.shop.split(".myshopify.com")[0];
 
   // Get current subscription status
