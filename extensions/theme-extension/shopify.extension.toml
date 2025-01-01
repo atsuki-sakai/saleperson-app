@@ -1,3 +1,8 @@
 name = "theme-extension"
 type = "theme"
 
+
+[blocks]
+name = "Salesperson Chat Widget"
+type = "app_embed"
+file = "blocks/saleperson-widget.liquid"

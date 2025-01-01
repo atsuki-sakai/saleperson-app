@@ -1,0 +1,76 @@
+
+
+{% style %}
+  .salesperson-chat-widget {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    left: 20px;
+    z-index: 1000;
+    height: auto;
+    width: fit-content;
+    background-color: #f0f0f0;
+    padding: 20px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    {% if request.page_type == 'customers/login' or request.page_type == 'customers/register' %}
+      display: none !important;
+    {% endif %}
+  }
+  .salesperson-chat-widget__text {
+    color: #333;
+    font-size: 1rem !important;
+    font-weight: bold;
+    text-align: center;
+  }
+  .salesperson-chat-widget__login {
+    color: #333;
+    text-align: center;
+  }
+  .salesperson-chat-widget__button-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .salesperson-chat-widget__button {
+    white-space: nowrap;
+    margin-top: 10px;
+    width: 100%;
+    display: block;
+    color: #fff;
+    background-color: #333;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 1rem !important;
+  }
+{% endstyle %}
+
+<div class="salesperson-chat-widget">
+  {% unless request.page_type == 'customers/login' or request.page_type == 'customers/register' %}
+    {% if customer %}
+      <p class="salesperson-chat-widget__text">{{ customer.name }}さん</p>
+    {% else %}
+      <div class="salesperson-chat-widget__login">
+        <p class="salesperson-chat-widget__text">ログインしてパーソナライズされた接客を体験ください。</p>
+        <div class="salesperson-chat-widget__button-wrapper">
+          <a href="{{ routes.account_login_url }}" class="salesperson-chat-widget__button">ログイン</a>
+          <a href="{{ routes.account_register_url }}" class="salesperson-chat-widget__button">新規登録はこちらから</a>
+        </div>
+      </div>
+    {% endif %}
+  {% endunless %}
+</div>
+  
+
+  {% schema %}
+  {
+    "name": "Salesperson Chat Widget",
+    "target": "body",
+    "settings": [
+      
+    ]
+  }
+  {% endschema %}

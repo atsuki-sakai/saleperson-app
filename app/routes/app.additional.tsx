@@ -9,6 +9,22 @@ import {
   BlockStack,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
+import { authenticate } from "../shopify.server";
+import { redirect } from "@remix-run/node";
+import type { LoaderFunctionArgs } from "@remix-run/node";
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const { billing } = await authenticate.admin(request);
+
+  const billingCheck = await billing.check();
+  const currentSubscription = billingCheck.appSubscriptions[0];
+
+  if (!currentSubscription) {
+    return redirect("/app/select-plan");
+  }
+
+  return null;
+};
 
 export default function AdditionalPage() {
   return (
