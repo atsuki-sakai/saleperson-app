@@ -1,0 +1,27 @@
+steps:
+  # Dockerイメージをビルド
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['buildx', 'build', '--platform', 'linux/amd64', '-t', 'saleperson-app:$COMMIT_SHA', '.']
+
+
+  # DockerイメージをArtifact Registryにプッシュ
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'saleperson-app:$COMMIT_SHA']
+
+  # Cloud Runにデプロイ
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args: [
+      'run', 'deploy', 'saleperson-app',
+      '--image', 'saleperson-app:$COMMIT_SHA',
+      '--platform', 'managed',
+      '--region', 'asia-northeast1',
+      '--allow-unauthenticated',
+      '--set-env-vars', 'ALLOWED_ORIGINS=*'
+    ]
+
+images:
+  - 'saleperson-app:$COMMIT_SHA'
+
+substitutions:
+  _PROJECT_ID: 'saleperson-app'
+  _SERVICE_NAME: 'saleperson-app'
