@@ -21,9 +21,8 @@ import {
 } from "../constants";
 import { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import { useNavigate, Form, useLoaderData } from "@remix-run/react";
-
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { billing } = await authenticate.admin(request);
+  const { billing, session, redirect } = await authenticate.admin(request);
 
   const billingCheck = await billing.check();
   return { billingCheck };
@@ -37,8 +36,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     | typeof ANNUAL_PLAN
     | typeof LITE_PLAN;
   const shop = session.shop.split(".myshopify.com")[0];
-
-  const billingCheck = await billing.require({
+  await billing.require({
     plans: [selectedPlan],
     onFailure: async () =>
       billing.request({

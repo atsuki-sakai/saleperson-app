@@ -1,6 +1,5 @@
 import { LoaderFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
-import { LITE_PLAN, MONTHLY_PLAN, ANNUAL_PLAN } from "../constants";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { billing, session, redirect } = await authenticate.admin(request);

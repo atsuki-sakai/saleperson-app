@@ -9,24 +9,43 @@ generator client {
 // enough when changing adapters.
 // See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
-  provider = "sqlite"
-  url      = "file:dev.sqlite"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Session {
-  id            String    @id
-  shop          String
-  state         String
-  isOnline      Boolean   @default(false)
-  scope         String?
-  expires       DateTime?
-  accessToken   String
-  userId        BigInt?
-  firstName     String?
-  lastName      String?
-  email         String?
-  accountOwner  Boolean   @default(false)
-  locale        String?
-  collaborator  Boolean?  @default(false)
-  emailVerified Boolean?  @default(false)
+  id             String    @id
+  shop           String
+  state          String
+  isOnline       Boolean   @default(false)
+  scope          String?
+  expires        DateTime? @db.Timestamp
+  accessToken    String
+  userId         BigInt?
+  firstName      String?
+  lastName       String?
+  email          String?
+  accountOwner   Boolean   @default(false)
+  locale         String?
+  collaborator   Boolean?  @default(false)
+  emailVerified  Boolean?  @default(false)
+
+  @@index([shop])
+}
+
+model Subscription {
+  id             String    @id @default(uuid())
+  shop           String
+  planId         String    // LITE_PLAN, MONTHLY_PLAN, ANNUAL_PLAN
+  status         String    // ACTIVE, CANCELLED, EXPIRED
+  startDate      DateTime  @db.Timestamp
+  endDate        DateTime? @db.Timestamp
+  cancelledAt    DateTime? @db.Timestamp
+  isTest         Boolean   @default(false)
+  subscriptionId String    // Shopify subscription ID
+  createdAt      DateTime  @default(now()) @db.Timestamp
+  updatedAt      DateTime  @updatedAt @db.Timestamp
+
+  @@index([shop])
+  @@index([subscriptionId])
 }

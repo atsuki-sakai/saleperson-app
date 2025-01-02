@@ -26,6 +26,7 @@ export default function App() {
         </Link>
         <Link to="/app/additional">Additional page</Link>
         <Link to="/app/select-plan">Select Plan</Link>
+        <Link to="/app/subscription-history">Subscription History</Link>
       </NavMenu>
       <Outlet />
     </AppProvider>
