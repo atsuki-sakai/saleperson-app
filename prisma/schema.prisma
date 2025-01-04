@@ -1,51 +1,85 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
-// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
-// enough when changing adapters.
-// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Session {
-  id             String    @id
-  shop           String
-  state          String
-  isOnline       Boolean   @default(false)
-  scope          String?
-  expires        DateTime? @db.Timestamp
-  accessToken    String
-  userId         BigInt?
-  firstName      String?
-  lastName       String?
-  email          String?
-  accountOwner   Boolean   @default(false)
-  locale         String?
-  collaborator   Boolean?  @default(false)
-  emailVerified  Boolean?  @default(false)
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime? @db.Timestamp(6)
+  accessToken   String
+  userId        BigInt?
+  accountOwner  Boolean   @default(false)
+  collaborator  Boolean?  @default(false)
+  email         String?
+  emailVerified Boolean?  @default(false)
+  firstName     String?
+  lastName      String?
+  locale        String?
 
   @@index([shop])
 }
 
-model Subscription {
-  id             String    @id @default(uuid())
-  shop           String
-  planId         String    // LITE_PLAN, MONTHLY_PLAN, ANNUAL_PLAN
-  status         String    // ACTIVE, CANCELLED, EXPIRED
-  startDate      DateTime  @db.Timestamp
-  endDate        DateTime? @db.Timestamp
-  cancelledAt    DateTime? @db.Timestamp
-  isTest         Boolean   @default(false)
-  subscriptionId String    // Shopify subscription ID
-  createdAt      DateTime  @default(now()) @db.Timestamp
-  updatedAt      DateTime  @updatedAt @db.Timestamp
+model Store {
+  id                  String         @id @default(cuid())
+  storeId             String         @unique
+  chatApiKey          String?
+  workflowApiKey      String?
+  systemPrompt        String?
+  storePrompt        String?
+  metaFieldDescription String?
+  iconUrl            String?
+  tone               String?
+  blockingKeywords   String?
+  chatColor          String?
+  isSubscribed       Boolean?       @default(false)
+  createdAt          DateTime       @default(now()) @db.Timestamp(6)
+  updatedAt          DateTime       @updatedAt @db.Timestamp(6)
+  knowledges         Knowledge[]
+  documents          Document[]
+  subscriptions      Subscription[]
 
-  @@index([shop])
-  @@index([subscriptionId])
+  @@index([storeId])
+}
+
+model Knowledge {
+  id        String   @id @default(cuid())
+  datasetId String
+  type      String
+  store     Store    @relation(fields: [storeId], references: [id])
+  storeId   String
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([storeId])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  datasetId String
+  store     Store    @relation(fields: [storeId], references: [id])
+  storeId   String
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([storeId])
+}
+
+model Subscription {
+  id        String   @id @default(cuid())
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  plan      String
+  status    String
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  @@index([storeId])
 }
