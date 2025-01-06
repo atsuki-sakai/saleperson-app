@@ -3,7 +3,7 @@
 client_id = "06d118204ece9125d19ace950e69ac2f"
 name = "saleperson-app"
 handle = "saleperson-app"
-application_url = "https://junction-instruments-memory-tract.trycloudflare.com"
+application_url = "https://pit-if-incomplete-meal.trycloudflare.com"
 embedded = true
 
 [build]
@@ -13,13 +13,13 @@ include_config_on_deploy = true
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products"
+scopes = "write_products,read_orders,read_customers,read_legal_policies"
 
 [auth]
 redirect_urls = [
-  "https://junction-instruments-memory-tract.trycloudflare.com/auth/callback",
-  "https://junction-instruments-memory-tract.trycloudflare.com/auth/shopify/callback",
-  "https://junction-instruments-memory-tract.trycloudflare.com/api/auth/callback"
+  "https://pit-if-incomplete-meal.trycloudflare.com/auth/callback",
+  "https://pit-if-incomplete-meal.trycloudflare.com/auth/shopify/callback",
+  "https://pit-if-incomplete-meal.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]

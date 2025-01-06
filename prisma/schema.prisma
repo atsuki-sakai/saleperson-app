@@ -23,62 +23,70 @@ model Session {
   firstName     String?
   lastName      String?
   locale        String?
+  
 
   @@index([shop])
 }
 
+/// Shopifyストアの設定とメタデータを管理するモデル
+/// ストア固有の設定やLLM関連の設定を保存
 model Store {
-  id                  String         @id @default(cuid())
-  storeId             String         @unique
-  chatApiKey          String?
-  workflowApiKey      String?
-  systemPrompt        String?
-  storePrompt        String?
+  /// ストアの一意識別子（UUID）
+  id                   String      @id @default(uuid())
+  /// Shopifyストアの一意識別子（## ※session.shopを使用 ##）
+  storeId              String      @unique
+  /// チャット機能用のAPIキー(ワークフローの構築後、手動で設定する必要があります)
+  chatApiKey           String?
+  /// ワークフロー機能用のAPIキー(ワークフローの構築後、手動で設定する必要があります)※未実装
+  workflowApiKey       String?
+  /// AIシステム共通のプロンプト設定
+  systemPrompt         String?
+  /// ストア固有のAIプロンプト設定
+  storePrompt          String?
+  /// チャットウィジェットのアイコンURL
+  iconUrl              String?
+  /// AIの応答トーン設定（例: 丁寧、カジュアル）
+  tone                 String?
+  /// チャットでブロックするキーワード
+  blockingKeywords     String?
+  /// ストアのデータセットID(１ストアに１つのデータセットID)
+  datasetId            String?
+  /// チャットウィジェットの色設定
+  chatColor            String?
+  /// レコードの作成日時
+  createdAt            DateTime    @default(now()) @db.Timestamp(6)
+  /// レコードの最終更新日時
+  updatedAt            DateTime    @updatedAt @db.Timestamp(6)
+  /// ストアのよくある質問のテキスト
+  faqContent           String?
+  /// 商品のメタフィールドの説明(メタフィールドがある場合のみ)
   metaFieldDescription String?
-  iconUrl            String?
-  tone               String?
-  blockingKeywords   String?
-  chatColor          String?
-  isSubscribed       Boolean?       @default(false)
-  createdAt          DateTime       @default(now()) @db.Timestamp(6)
-  updatedAt          DateTime       @updatedAt @db.Timestamp(6)
-  knowledges         Knowledge[]
-  documents          Document[]
-  subscriptions      Subscription[]
+  /// ストアに紐づくドキュメント一覧(よくある質問、商品データ、メタフィールドの説明など)
+  documents            Document[]
 
   @@index([storeId])
 }
 
-model Knowledge {
-  id        String   @id @default(cuid())
-  datasetId String
-  type      String
-  store     Store    @relation(fields: [storeId], references: [id])
-  storeId   String
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([storeId])
-}
-
+/// ストアのドキュメントを管理するモデル
+/// FAQやその他のナレッジベースとなるドキュメントを保存
 model Document {
-  id        String   @id @default(cuid())
-  datasetId String
-  store     Store    @relation(fields: [storeId], references: [id])
+  /// ドキュメントの一意識別子（UUID）
+  id        String   @id @default(uuid())
+  /// ドキュメントのタイトル
+  name      String
+  /// ドキュメントのタイプ
+  type      String
+  /// ドキュメントの本文(複数のチャンクが格納されている)
+  text      String
+  /// 関連するストアのID（外部キー）  
   storeId   String
+  /// データセットID
+  datasetId String?
+  /// ストアとの関連付け
+  store     Store    @relation(fields: [storeId], references: [storeId])
+  /// ドキュメントの作成日時
   createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  @@index([storeId])
-}
-
-model Subscription {
-  id        String   @id @default(cuid())
-  storeId   String
-  store     Store    @relation(fields: [storeId], references: [id])
-  plan      String
-  status    String
-  createdAt DateTime @default(now()) @db.Timestamp(6)
+  /// ドキュメントの最終更新日時
   updatedAt DateTime @updatedAt @db.Timestamp(6)
 
   @@index([storeId])

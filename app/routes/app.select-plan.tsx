@@ -2,7 +2,6 @@ import {
   Box,
   Card,
   Layout,
-  Link,
   List,
   Page,
   Text,
@@ -10,7 +9,6 @@ import {
   Button,
   InlineStack,
 } from "@shopify/polaris";
-import { TitleBar } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import {
   LITE_PLAN,
@@ -18,11 +16,11 @@ import {
   ANNUAL_PLAN,
   PLAN_CONFIGS,
   PlanFeature,
-} from "../constants";
+} from "../../app/lib/const";
 import { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
-import { useNavigate, Form, useLoaderData } from "@remix-run/react";
+import { Form, useLoaderData } from "@remix-run/react";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { billing, session, redirect } = await authenticate.admin(request);
+  const { billing } = await authenticate.admin(request);
 
   const billingCheck = await billing.check();
   return { billingCheck };
@@ -32,9 +30,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { billing, session } = await authenticate.admin(request);
   const formData = await request.formData();
   const selectedPlan = formData.get("plan") as
+    | typeof LITE_PLAN
     | typeof MONTHLY_PLAN
-    | typeof ANNUAL_PLAN
-    | typeof LITE_PLAN;
+    | typeof ANNUAL_PLAN;
   const shop = session.shop.split(".myshopify.com")[0];
   await billing.require({
     plans: [selectedPlan],
@@ -68,7 +66,6 @@ function PlanFeatureList({ features }: { features: PlanFeature[] }) {
 }
 
 export default function SelectPlan() {
-  const navigate = useNavigate();
   const { billingCheck } = useLoaderData<typeof loader>();
 
   const hasSubscription = billingCheck.appSubscriptions.length > 0;
@@ -81,16 +78,15 @@ export default function SelectPlan() {
 
   return (
     <Page>
-      <TitleBar title="Select Plan" />
       <Layout>
         {!hasSubscription ? (
           <Layout.Section>
             <BlockStack gap="500">
               <Text as="h1" variant="headingLg">
-                Choose the Right Plan for Your Business
+                ビジネスに最適なプランを選択
               </Text>
 
-              <InlineStack gap="500" align="start">
+              <InlineStack gap="200" align="start">
                 {PLAN_CONFIGS.map((plan) => (
                   <Card key={plan.id}>
                     <BlockStack gap="400">
@@ -98,7 +94,7 @@ export default function SelectPlan() {
                         <Text as="h2" variant="headingMd">
                           {plan.name}
                         </Text>
-                        <Text as="p" variant="bodyMd" tone="subdued">
+                        <Text as="p" variant="bodySm" tone="subdued">
                           {plan.description}
                         </Text>
                       </BlockStack>
@@ -106,7 +102,7 @@ export default function SelectPlan() {
                       <Text as="p" variant="headingLg">
                         ¥{plan.price.toLocaleString()}
                         <Text as="span" variant="bodyMd" tone="subdued">
-                          /{plan.interval === "ANNUAL" ? "year" : "month"}
+                          /{plan.interval === "ANNUAL" ? "年" : "月"}
                         </Text>
                       </Text>
 
@@ -115,7 +111,7 @@ export default function SelectPlan() {
                       <Form method="post">
                         <input type="hidden" name="plan" value={plan.id} />
                         <Button variant="primary" submit fullWidth>
-                          Select {plan.name}
+                          {plan.name}を選択
                         </Button>
                       </Form>
                     </BlockStack>
@@ -129,7 +125,7 @@ export default function SelectPlan() {
             <Card>
               <BlockStack gap="400">
                 <Text as="h1" variant="headingLg">
-                  Current Subscription Details
+                  現在のサブスクリプション
                 </Text>
 
                 <BlockStack gap="200">
@@ -143,46 +139,40 @@ export default function SelectPlan() {
 
                 <BlockStack gap="200">
                   <Text as="p" variant="headingMd">
-                    Price
+                    料金
                   </Text>
                   <Text as="p" variant="bodyMd">
                     ¥{currentPlan?.price.toLocaleString()}
                     <Text as="span" variant="bodyMd" tone="subdued">
-                      /{currentPlan?.interval === "ANNUAL" ? "year" : "month"}
+                      /{currentPlan?.interval === "ANNUAL" ? "年" : "月"}
                     </Text>
                   </Text>
                 </BlockStack>
 
                 <BlockStack gap="200">
                   <Text as="p" variant="headingMd">
-                    Features Included
+                    含まれる機能
                   </Text>
                   {currentPlan && (
                     <PlanFeatureList features={currentPlan.features} />
                   )}
                 </BlockStack>
 
-                <BlockStack gap="200">
-                  <Text as="p" variant="headingMd">
-                    Subscription Status
+                {currentSubscription?.test ? (
+                  <Text as="h2" variant="headingMd" tone="critical">
+                    テストモード中
                   </Text>
-                  <Text as="p" variant="bodyMd">
-                    Status: {currentSubscription?.status}
-                  </Text>
-                  <Text as="p" variant="bodyMd">
-                    Test Mode: {currentSubscription?.test ? "Yes" : "No"}
-                  </Text>
-                </BlockStack>
+                ) : null}
 
-                <BlockStack gap="200" align="start">
+                <Box maxWidth="300px" paddingBlockStart="400">
                   <Button
                     variant="primary"
                     tone="critical"
                     url="/app/cancel-subscription"
                   >
-                    Cancel Subscription
+                    サブスクリプションをキャンセル
                   </Button>
-                </BlockStack>
+                </Box>
               </BlockStack>
             </Card>
           </Layout.Section>

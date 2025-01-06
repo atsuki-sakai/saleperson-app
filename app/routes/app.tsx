@@ -24,9 +24,10 @@ export default function App() {
         <Link to="/app" rel="home">
           Home
         </Link>
-        <Link to="/app/additional">Additional page</Link>
+        <Link to="/app/chat">Chat</Link>
+        {/* <Link to="/app/chat-history">Chat History</Link> */}
+        <Link to="/app/contact">Contact</Link>
         <Link to="/app/select-plan">Select Plan</Link>
-        <Link to="/app/subscription-history">Subscription History</Link>
       </NavMenu>
       <Outlet />
     </AppProvider>
