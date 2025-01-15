@@ -2,10 +2,13 @@ generator client {
   provider = "prisma-client-js"
 }
 
+/// ローカル開発時のデータベース接続設定は.envのLOCAL_DATABASE_URLを使用
+/// 本番環境のデータベース接続設定は.envのDATABASE_URLを使用
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      =  env("DATABASE_URL")
 }
+
 
 model Session {
   id            String    @id
@@ -23,18 +26,18 @@ model Session {
   firstName     String?
   lastName      String?
   locale        String?
-  
 
   @@index([shop])
+  @@map("session")
 }
 
 /// Shopifyストアの設定とメタデータを管理するモデル
 /// ストア固有の設定やLLM関連の設定を保存
 model Store {
   /// ストアの一意識別子（UUID）
-  id                   String      @id @default(uuid())
+  id                   String     @id @default(uuid())
   /// Shopifyストアの一意識別子（## ※session.shopを使用 ##）
-  storeId              String      @unique
+  storeId              String     @unique @map("storeId")
   /// チャット機能用のAPIキー(ワークフローの構築後、手動で設定する必要があります)
   chatApiKey           String?
   /// ワークフロー機能用のAPIキー(ワークフローの構築後、手動で設定する必要があります)※未実装
@@ -54,20 +57,19 @@ model Store {
   /// チャットウィジェットの色設定
   chatColor            String?
   /// レコードの作成日時
-  createdAt            DateTime    @default(now()) @db.Timestamp(6)
+  createdAt            DateTime   @default(now()) @map("createdAt")
   /// レコードの最終更新日時
-  updatedAt            DateTime    @updatedAt @db.Timestamp(6)
+  updatedAt            DateTime   @updatedAt @map("updatedAt")
   /// ストアのよくある質問のテキスト
   faqContent           String?
   /// 商品のメタフィールドの説明(メタフィールドがある場合のみ)
   metaFieldDescription String?
-  /// ストアに紐づくドキュメント一覧(よくある質問、商品データ、メタフィールドの説明など)
   documents            Document[]
 
   @@index([storeId])
+  @@map("store")
 }
 
-/// ストアのドキュメントを管理するモデル
 /// FAQやその他のナレッジベースとなるドキュメントを保存
 model Document {
   /// ドキュメントの一意識別子（UUID）
@@ -76,18 +78,15 @@ model Document {
   name      String
   /// ドキュメントのタイプ
   type      String
-  /// ドキュメントの本文(複数のチャンクが格納されている)
-  text      String
-  /// 関連するストアのID（外部キー）  
+  /// 関連するストアのID（外部キー）
   storeId   String
-  /// データセットID
   datasetId String?
-  /// ストアとの関連付け
+  /// レコードの作成日時
+  createdAt DateTime @default(now()) @map("createdAt")
+  /// レコードの最終更新日時
+  updatedAt DateTime @updatedAt @map("updatedAt")
   store     Store    @relation(fields: [storeId], references: [storeId])
-  /// ドキュメントの作成日時
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  /// ドキュメントの最終更新日時
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
   @@index([storeId])
+  @@map("document")
 }
