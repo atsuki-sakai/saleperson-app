@@ -1,0 +1,34 @@
+version: '3'
+services:
+  # PostgreSQLコンテナ
+  db:
+    image: postgres:15
+    container_name: saleperson-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Heisei50721
+      POSTGRES_DB: saleperson-app-db
+    ports:
+      - '5432:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  # アプリコンテナ
+  app:
+    container_name: saleperson-app
+    build: .
+    # or 既にビルドしたイメージがある場合: image: 'saleperson-app:latest'
+    image: saleperson-app:latest
+    ports:
+      - '3000:3000'
+    environment:
+      # コンテナ間通信のためホスト名は "db" (dbサービス名) を指定
+      - DATABASE_URL=postgresql://postgres:Heisei50721@db:5432/saleperson-app-db
+      - APP_URL=http://localhost:3000
+      - HOST=localhost:3000
+      # 必要な他の環境変数もここに定義可能
+    depends_on:
+      - db
+
+volumes:
+  db-data:
