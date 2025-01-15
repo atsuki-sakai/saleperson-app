@@ -16,7 +16,7 @@ import {
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { useState } from "react";
-import { createKnowledge } from "../services/dify/api/datasets";
+import { handleStoreUpsert } from "../models/documents.server";
 import {
   createDocumentFromText,
   updateDocumentByText,
@@ -147,12 +147,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         "\n## 回答をブロックするキーワード。以下のキーワードは回答しないでください。\n" +
         blockingKeywords;
 
-      const store = await handleStoreUpsert({
-        storeId: session.shop,
-        mainPrompt,
-      });
+      // const store = await handleStoreUpsert({
+      //   storeId: session.shop,
+      //   mainPrompt,
+      // });
 
-      return { success: true, type: "api_settings", store };
+      return { success: true, type: "api_settings", store: null };
     } catch (error) {
       console.error("Error saving API settings:", error);
       return {
@@ -402,101 +402,3 @@ export default function ChatPage() {
   );
 }
 
-async function handleStoreUpsert(params: {
-  storeId: string;
-  mainPrompt: string;
-}) {
-  const { storeId, mainPrompt } = params;
-
-  const store = await prisma.store.findUnique({
-    where: { storeId },
-    include: { documents: true },
-  });
-
-  if (!mainPrompt) {
-    throw new Error("プロンプトが空です。");
-  }
-  const promptName = "システムプロンプト";
-  const shopName = storeId.split(".myshopify.com")[0];
-
-  // 1. Difyでナレッジ(データセット)の作成 or 既存IDを使用
-  let datasetId = store?.datasetId;
-  if (!datasetId) {
-    const knowledgeResponse = await createKnowledge({
-      name: shopName,
-      permission: "only_me",
-    });
-    datasetId = knowledgeResponse.id;
-  }
-  // 2. 既存のシステムプロンプトドキュメントを検索
-  const existingSystemPromptDoc = store?.documents.find(
-    (doc) => doc.type === "system_prompt",
-  );
-
-  // 3. Difyでドキュメントを作成 or 更新
-  const documentResponse = !existingSystemPromptDoc
-    ? await createDocumentFromText(datasetId, {
-        name: promptName,
-        text: mainPrompt,
-        process_rule: {
-          mode: "custom",
-          rules: {
-            segmentation: {
-              separator: CHUNK_SEPARATOR_SYMBOL,
-              max_tokens: CHUNK_MAX_TOKENS,
-            },
-            pre_processing_rules: [
-              { id: "remove_extra_spaces", enabled: true },
-              { id: "remove_urls_emails", enabled: true },
-            ],
-          },
-        },
-        indexing_technique: "high_quality",
-      })
-    : await updateDocumentByText(datasetId, existingSystemPromptDoc.id, {
-        name: promptName,
-        text: mainPrompt,
-      });
-
-  const documentId = documentResponse.id;
-  if (!documentId) {
-    throw new Error("ドキュメントIDの取得に失敗しました。");
-  }
-  // 4. PrismaでDB更新
-  const updatedStore = await prisma.store.upsert({
-    where: { storeId: storeId },
-    create: {
-      storeId: storeId,
-      datasetId: datasetId,
-      documents: {
-        create: {
-          id: documentId,
-          name: promptName,
-          text: mainPrompt,
-          type: "system_prompt",
-        },
-      },
-    },
-    update: {
-      datasetId: datasetId,
-      documents: {
-        upsert: {
-          where: { id: documentId },
-          create: {
-            id: documentId,
-            name: promptName,
-            text: mainPrompt,
-            type: "system_prompt",
-            datasetId: datasetId,
-          },
-          update: {
-            text: mainPrompt,
-          },
-        },
-      },
-    },
-    include: { documents: true },
-  });
-
-  return updatedStore;
-}

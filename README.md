@@ -58,3 +58,5 @@
 6.	本番デプロイ
 •	Cloud Runやどこかの環境にアプリをデプロイし、Cloud SQL(PostgreSQL)と連携
 •	GCPのIAMロールを正しく設定（Cloud SQL Client権限など）し、認証エラーを回避する
+
+※開発環境のDBはprisma.schemeのDATABASE_URLをLOCALのものを使用する

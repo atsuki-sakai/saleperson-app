@@ -49,6 +49,6 @@ export type Order = {
   currentSubtotalLineItemsQuantity: number;
   tags: string;
   lineItems: {
-    edges: { node: { title: string; quantity: number; originalTotalSet: { shopMoney: { amount: string; currencyCode: string } } } }[];
+    edges: { node: { title: string; quantity: number; originalTotalSet: { presentmentMoney: { amount: string; currencyCode: string } } } }[];
   };
 };

@@ -33,7 +33,7 @@ export const fetchOrders = async (
   const response = await admin.graphql(
     `#graphql
     query getOrders($cursor: String, $query: String) {
-      orders(first: 50, after: $cursor, query: $query) {
+      orders(first: 100, after: $cursor, query: $query) {
         edges {
           node {
             id

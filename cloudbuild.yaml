@@ -16,7 +16,7 @@ steps:
       '--platform', 'managed',
       '--region', 'asia-northeast1',
       '--allow-unauthenticated',
-      '--set-env-vars', 'ALLOWED_ORIGINS=*'
+      '--set-env-vars', 'ALLOWED_ORIGINS=*',
     ]
 
 images:

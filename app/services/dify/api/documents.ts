@@ -1,5 +1,5 @@
 import { DifyError } from "../../../../app/lib/errors";
-import { Document, ProcessRule } from "./types";
+import { Document, ProcessRule, Segment } from "./types";
 import { LOCAL_MODE } from "../../../../app/lib/const";
 
 
@@ -53,12 +53,7 @@ export async function listDocuments(
  */
 export async function createDocumentFromText(
   datasetId: string,
-  params: {
-    name: string;
-    text: string;
-    indexing_technique?: "high_quality" | "economy";
-    process_rule?: ProcessRule;
-  }
+  params: ProcessRule
 ): Promise<Document> {
 
   const response = await fetch(
@@ -73,6 +68,9 @@ export async function createDocumentFromText(
     }
   );
 
+  console.log("response: ", response);
+
+  console.log("res.ok", response.ok);
   if (!response.ok) {
     const error = await response.json();
     console.error("Document creation API error:", {
@@ -152,9 +150,8 @@ export async function updateDocumentByText(
 export async function getDocumentSegments(
   datasetId: string,
   documentId: string,
-) {
+): Promise<Segment[]> {
   try {
-
     const response = await fetch(`${BASE_URL}/datasets/${datasetId}/documents/${documentId}/segments`, {
       method: "GET",
       headers: {
@@ -164,11 +161,12 @@ export async function getDocumentSegments(
     });
 
     if (!response.ok) {
-      throw new DifyError("セグメントの取得に失敗しました。", response.status);
+      const error = await response.json();
+      throw new DifyError(error.message || "セグメントの取得に失敗しました。", response.status);
     }
 
-    const {data}= await response.json();
-    return data;
+    const data = await response.json();
+    return data.data || [];
   } catch (error: any) {
     console.error("Error fetching document segments:", error);
     throw new DifyError(
@@ -188,7 +186,7 @@ export async function updateDocumentSegment(
     keywords?: string[];
     enabled?: boolean;
   }
-) {
+): Promise<Segment> {
   try {
     const response = await fetch(
       `${BASE_URL}/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`,
@@ -205,11 +203,12 @@ export async function updateDocumentSegment(
     );
 
     if (!response.ok) {
-      throw new DifyError("セグメントの更新に失敗しました。", response.status);
+      const error = await response.json();
+      throw new DifyError(error.message || "セグメントの更新に失敗しました。", response.status);
     }
 
-    const {data} = await response.json();
-    return data;
+    const data = await response.json();
+    return data.data;
   } catch (error: any) {
     console.error("Error updating document segment:", error);
     throw new DifyError(

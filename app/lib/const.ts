@@ -1,28 +1,9 @@
-
+import { PlanConfig, LITE_PLAN, MONTHLY_PLAN, ANNUAL_PLAN } from "./types";
 // ##################################################################
-// ローカルモードの設定: trueの場合はローカルのDifyを使用します、Dockerも必ず起動してください。
+// ローカルモ�の設定: trueの場合はローカルのDifyを使用します、Dockerも必ず起動してください。
 export const LOCAL_MODE = true;
 // ##################################################################
 
-// App - Plan
-export type PlanFeature = {
-  name: string;
-  included: boolean;
-};
-
-export type PlanConfig = {
-  id: typeof LITE_PLAN | typeof MONTHLY_PLAN | typeof ANNUAL_PLAN;
-  name: string;
-  price: number;
-  currency: string;
-  interval: "EVERY_30_DAYS" | "ANNUAL";
-  features: PlanFeature[];
-  description: string;
-};
-
-export const LITE_PLAN = "Lite Subscription" as const;
-export const MONTHLY_PLAN = "Monthly subscription" as const;
-export const ANNUAL_PLAN = "Annual subscription" as const;
 
 export const PLAN_CONFIGS: PlanConfig[] = [
   {

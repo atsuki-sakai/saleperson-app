@@ -13,7 +13,7 @@ export const fetchShopifyProducts = async (
   const response = await admin.graphql(
     `#graphql
     query getProducts($cursor: String) {
-      products(first: 50, after: $cursor) {
+      products(first: 100, after: $cursor) {
         edges {
           node {
             id
