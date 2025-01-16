@@ -99,9 +99,11 @@ export const fetchShopifyProducts = async (
       variables: { cursor }
     }
   );
+  
 
   const { data } = await response.json();
   const products = data.products.edges.map((edge: any) => edge.node);
+  
 
   return {
     products,

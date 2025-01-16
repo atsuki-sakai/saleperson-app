@@ -20,11 +20,18 @@ export const action: ActionFunction = async ({ request }) => {
 
     // 1) Taskを PROCESSING に更新
     //    既にCOMPLETEDやPENDINGでも、途中から再実行するケースあり得る
-    const task = await prisma.task.update({
+    const task = await prisma.task.upsert({
       where: { id: taskId },
-      data: {
+      update: {
         status: "IN_PROGRESS",
         updatedAt: new Date(),
+      },
+      create: {
+        id: taskId,
+        status: "IN_PROGRESS",
+        updatedAt: new Date(),
+        storeId: shopDomain,
+        type: "PRODUCT_SYNC",
       },
     });
 
@@ -33,18 +40,25 @@ export const action: ActionFunction = async ({ request }) => {
       request,
       cursor,
     );
-    const productText = clensingProductDataToText(products, shopDomain);
+    // const productText = clensingProductDataToText(products, shopDomain);
 
     // 3) Difyに送る
-    await upsertProducts(shopDomain, productText);
+    // await upsertProducts(shopDomain, productText);
 
     // 4) taskの progressCount を加算
     //    もしTaskに totalCountを事前に入れたいなら、何らかの方法で算出しておく
-    const updatedTask = await prisma.task.update({
+    const updatedTask = await prisma.task.upsert({
       where: { id: taskId },
-      data: {
+      update: {
         progressCount: { increment: products.length },
         cursor: nextCursor ?? undefined,
+      },
+      create: {
+        id: taskId,
+        progressCount: products.length,
+        cursor: nextCursor ?? undefined,
+        storeId: shopDomain,
+        type: "PRODUCT_SYNC",
       },
     });
 
@@ -58,11 +72,18 @@ export const action: ActionFunction = async ({ request }) => {
       });
     } else {
       // 最終ページ → COMPLETED に更新
-      await prisma.task.update({
+      await prisma.task.upsert({
         where: { id: taskId },
-        data: {
+        update: {
           status: "COMPLETED",
           updatedAt: new Date(),
+        },
+        create: {
+          id: taskId,
+          status: "COMPLETED",
+          updatedAt: new Date(),
+          storeId: shopDomain,
+          type: "PRODUCT_SYNC",
         },
       });
     }
