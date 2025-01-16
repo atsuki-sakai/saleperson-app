@@ -3,7 +3,7 @@
 client_id = "06d118204ece9125d19ace950e69ac2f"
 name = "saleperson-app"
 handle = "saleperson-app"
-application_url = "https://reservations-camel-ot-peoples.trycloudflare.com"
+application_url = "https://valium-philosophy-glenn-commonly.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "write_products,read_orders,read_customers,read_legal_policies"
 
 [auth]
 redirect_urls = [
-  "https://reservations-camel-ot-peoples.trycloudflare.com/auth/callback",
-  "https://reservations-camel-ot-peoples.trycloudflare.com/auth/shopify/callback",
-  "https://reservations-camel-ot-peoples.trycloudflare.com/api/auth/callback"
+  "https://valium-philosophy-glenn-commonly.trycloudflare.com/auth/callback",
+  "https://valium-philosophy-glenn-commonly.trycloudflare.com/auth/shopify/callback",
+  "https://valium-philosophy-glenn-commonly.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]

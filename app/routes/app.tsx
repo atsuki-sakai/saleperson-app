@@ -28,6 +28,7 @@ export default function App() {
         {/* <Link to="/app/chat-history">Chat History</Link> */}
         <Link to="/app/contact">Contact</Link>
         <Link to="/app/select-plan">Select Plan</Link>
+        <Link to="/app/start-sync">Start Sync</Link>
       </NavMenu>
       <Outlet />
     </AppProvider>

@@ -33,6 +33,18 @@ const shopify = shopifyApp({
   hooks: {
     afterAuth: async ({ session }) => {
       shopify.registerWebhooks({ session });
+
+      // ユーザーのアクセストークンをDBに保存
+      await prisma.store.upsert({
+        where: { storeId: session.shop },
+        create: {
+          storeId: session.shop,
+          accessToken: session.accessToken,   
+        },
+        update: {
+          accessToken: session.accessToken,
+        },
+      });
     },
   },
   future: {
