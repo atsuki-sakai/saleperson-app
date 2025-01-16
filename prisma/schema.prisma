@@ -117,6 +117,7 @@ model Task {
   updatedAt     DateTime   @updatedAt
 
   @@index([storeId])
+  @@unique([storeId, type])
   @@map("task")
 }
 
