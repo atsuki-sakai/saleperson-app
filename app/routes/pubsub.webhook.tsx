@@ -19,9 +19,13 @@ export const action: ActionFunction = async ({ request }) => {
     const { taskId, shopDomain, cursor, pageSize } = payload;
 
     // 1) Taskを PROCESSING に更新
-    //    既にCOMPLETEDやPENDINGでも、途中から再実行するケースあり得る
     const task = await prisma.task.upsert({
-      where: { id: taskId },
+      where: {
+        storeId_type: {
+          storeId: shopDomain,
+          type: "PRODUCT_SYNC",
+        },
+      },
       update: {
         status: "IN_PROGRESS",
         updatedAt: new Date(),
@@ -29,7 +33,6 @@ export const action: ActionFunction = async ({ request }) => {
       create: {
         id: taskId,
         status: "IN_PROGRESS",
-        updatedAt: new Date(),
         storeId: shopDomain,
         type: "PRODUCT_SYNC",
       },
@@ -46,19 +49,16 @@ export const action: ActionFunction = async ({ request }) => {
     // await upsertProducts(shopDomain, productText);
 
     // 4) taskの progressCount を加算
-    //    もしTaskに totalCountを事前に入れたいなら、何らかの方法で算出しておく
-    const updatedTask = await prisma.task.upsert({
-      where: { id: taskId },
-      update: {
+    const updatedTask = await prisma.task.update({
+      where: {
+        storeId_type: {
+          storeId: shopDomain,
+          type: "PRODUCT_SYNC",
+        },
+      },
+      data: {
         progressCount: { increment: products.length },
         cursor: nextCursor ?? undefined,
-      },
-      create: {
-        id: taskId,
-        progressCount: products.length,
-        cursor: nextCursor ?? undefined,
-        storeId: shopDomain,
-        type: "PRODUCT_SYNC",
       },
     });
 
@@ -72,18 +72,16 @@ export const action: ActionFunction = async ({ request }) => {
       });
     } else {
       // 最終ページ → COMPLETED に更新
-      await prisma.task.upsert({
-        where: { id: taskId },
-        update: {
-          status: "COMPLETED",
-          updatedAt: new Date(),
+      await prisma.task.update({
+        where: {
+          storeId_type: {
+            storeId: shopDomain,
+            type: "PRODUCT_SYNC",
+          },
         },
-        create: {
-          id: taskId,
+        data: {
           status: "COMPLETED",
           updatedAt: new Date(),
-          storeId: shopDomain,
-          type: "PRODUCT_SYNC",
         },
       });
     }
