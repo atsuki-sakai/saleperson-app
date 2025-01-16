@@ -10,8 +10,16 @@ const pubsub = new PubSub();
  * @param payload   JSオブジェクトをJSON化してPublish
  */
 export async function publishToPubSub(topicName: string, payload: object) {
-  const dataBuffer = Buffer.from(JSON.stringify(payload));
-  await pubsub.topic(topicName).publishMessage({ data: dataBuffer });
+  try {
+    console.log(`Publishing to topic ${topicName}:`, payload);
+    const dataBuffer = Buffer.from(JSON.stringify(payload));
+    const messageId = await pubsub.topic(topicName).publishMessage({ data: dataBuffer });
+    console.log(`Message published with ID: ${messageId}`);
+    return messageId;
+  } catch (error) {
+    console.error(`Error publishing to topic ${topicName}:`, error);
+    throw error;
+  }
 }
 
 /**

@@ -64,12 +64,25 @@ export const action: ActionFunction = async ({ request }) => {
 
     // 5) 次のページがあれば Pub/Sub再発行、なければCOMPLETED
     if (hasMore && nextCursor) {
-      await publishToPubSub("PRODUCT_SYNC_TOPIC", {
+      console.log("Publishing to PubSub with payload:", {
         taskId,
         shopDomain,
         cursor: nextCursor,
         pageSize,
       });
+
+      try {
+        await publishToPubSub("PRODUCT_SYNC_TOPIC", {
+          taskId,
+          shopDomain,
+          cursor: nextCursor,
+          pageSize,
+        });
+        console.log("Successfully published to PubSub");
+      } catch (pubsubError) {
+        console.error("PubSub publish error:", pubsubError);
+        throw pubsubError;
+      }
     } else {
       // 最終ページ → COMPLETED に更新
       await prisma.task.update({
