@@ -1,12 +1,13 @@
-// pubsub.webhook.tsx: Pub/SubのPush先エンドポイント → メッセージを受け取り → Shopifyから商品100件取得 → Dify送信 → 次のページがあれば再度Publish
 // app/routes/pubsub.webhook.tsx
 import type { ActionFunction } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { prisma } from "../db.server";
 import { getPubSubPayload, publishToPubSub } from "../services/pubsub.server";
 import { fetchShopifyProducts } from "../services/shopify/fetchShopifyProducts";
-import { upsertProducts } from "../models/documents.server";
-import { clensingProductDataToText } from "../models/documents.server";
+import {
+  upsertProducts,
+  clensingProductDataToText,
+} from "../models/documents.server";
 
 export const action: ActionFunction = async ({ request }) => {
   if (request.method !== "POST") {
@@ -14,31 +15,40 @@ export const action: ActionFunction = async ({ request }) => {
   }
 
   try {
-    // 1) Pub/Subのメッセージをデコード
     const payload = await getPubSubPayload(request);
     const { taskId, shopDomain, cursor, pageSize } = payload;
 
-    // 2) Shopifyから商品を取得(100件)
+    // 1) Taskを PROCESSING に更新
+    //    既にCOMPLETEDやPENDINGでも、途中から再実行するケースあり得る
+    const task = await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        status: "IN_PROGRESS",
+        updatedAt: new Date(),
+      },
+    });
+
+    // 2) Shopifyから商品取得
     const { products, hasMore, nextCursor } = await fetchShopifyProducts(
       request,
       cursor,
     );
-
-    // 3) Difyに送る (upsertProducts内で clensingProductDataToText → Dify createDocument)
     const productText = clensingProductDataToText(products, shopDomain);
+
+    // 3) Difyに送る
     await upsertProducts(shopDomain, productText);
 
-    // 4) 進捗管理 (実際にはTaskテーブルなどを使って更新)
-    // 例: ここではStoreテーブルにprogressなどのフィールドがあるとして
-    await prisma.store.update({
-      where: { storeId: shopDomain },
+    // 4) taskの progressCount を加算
+    //    もしTaskに totalCountを事前に入れたいなら、何らかの方法で算出しておく
+    const updatedTask = await prisma.task.update({
+      where: { id: taskId },
       data: {
-        // 何らかの progress や status を更新
-        // progress: { increment: products.length }
+        progressCount: { increment: products.length },
+        cursor: nextCursor ?? undefined,
       },
     });
 
-    // 5) 次のページがあれば再度Pub/SubにPublish
+    // 5) 次のページがあれば Pub/Sub再発行、なければCOMPLETED
     if (hasMore && nextCursor) {
       await publishToPubSub("PRODUCT_SYNC_TOPIC", {
         taskId,
@@ -47,12 +57,12 @@ export const action: ActionFunction = async ({ request }) => {
         pageSize,
       });
     } else {
-      // すべて完了
-      // DBに完了ステータスを記録など
-      await prisma.store.update({
-        where: { storeId: shopDomain },
+      // 最終ページ → COMPLETED に更新
+      await prisma.task.update({
+        where: { id: taskId },
         data: {
-          // e.g. status: "COMPLETED"
+          status: "COMPLETED",
+          updatedAt: new Date(),
         },
       });
     }
@@ -60,6 +70,18 @@ export const action: ActionFunction = async ({ request }) => {
     return json({ success: true });
   } catch (error: any) {
     console.error("PubSub Handler Error:", error);
+    // TaskをERRORに更新
+    //  (taskIdが存在しない場合はtry-catch or optionalで対策)
+    if (error?.message && error?.stack) {
+      await prisma.task.updateMany({
+        where: { id: error.taskId }, // or { id: taskId } if you still have it
+        data: {
+          status: "ERROR",
+          errorMessage: String(error.message).slice(0, 500), // 長すぎる場合は切り捨て
+        },
+      });
+    }
+
     return json({ error: error.message || "Unknown error" }, { status: 500 });
   }
 };

@@ -1,27 +1,41 @@
-// フロントで「同期開始」ボタンを押す → ActionでPub/Subに「同期開始」をPublish
-
 // app/routes/app.start-sync.tsx
 import { ActionFunction, json } from "@remix-run/node";
 import { useActionData, Form } from "@remix-run/react";
 import { prisma } from "../db.server";
 import { publishToPubSub } from "../services/pubsub.server";
 import { authenticate } from "../shopify.server";
+
 export const action: ActionFunction = async ({ request }) => {
   const { session } = await authenticate.admin(request);
 
-  // 1) DBにTaskレコードを作る (進捗管理)
-  const task = await prisma.task.create({
-    data: {
+  // 1) Taskを upsert (既に同じstoreId + typeがあれば更新、なければ新規)
+  //    再度同期開始した場合、status = COMPLETED のままでも上書きする（PENDINGに戻す）
+  const task = await prisma.task.upsert({
+    where: {
+      storeId_type: {
+        storeId: session.shop,
+        type: "PRODUCT_SYNC",
+      },
+    },
+    update: {
+      status: "PENDING",
+      progressCount: 0,
+      totalCount: 0,
+      errorMessage: null,
+      cursor: null,
+      updatedAt: new Date(),
+    },
+    create: {
       storeId: session.shop,
       type: "PRODUCT_SYNC",
       status: "PENDING",
       progressCount: 0,
       totalCount: 0,
+      // cursor, errorMessage は必要に応じて指定
     },
   });
 
-  // 2) Pub/Subに「同期開始メッセージ」を送信
-  //    ここでcursor=nullなどをセットし、最初の100件を取得指示
+  // 2) Pub/Sub にメッセージを送信して同期開始
   await publishToPubSub("PRODUCT_SYNC_TOPIC", {
     taskId: task.id,
     shopDomain: session.shop,
