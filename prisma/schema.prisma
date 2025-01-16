@@ -38,6 +38,8 @@ model Store {
   id                   String     @id @default(uuid())
   /// Shopifyストアの一意識別子（## ※session.shopを使用 ##）
   storeId              String     @unique @map("storeId")
+  /// ストアのアクセストークン
+  accessToken          String?
   /// チャット機能用のAPIキー(ワークフローの構築後、手動で設定する必要があります)
   chatApiKey           String?
   /// ワークフロー機能用のAPIキー(ワークフローの構築後、手動で設定する必要があります)※未実装
@@ -89,4 +91,39 @@ model Document {
 
   @@index([storeId])
   @@map("document")
+}
+
+/// バックグラウンドタスクの状態を管理するモデル
+model Task {
+  /// タスクの一意識別子（UUID）
+  id            String     @id @default(uuid())
+  /// 関連するストアのID
+  storeId       String
+  /// タスクの種類
+  type          String
+  /// タスクの状態
+  status        TaskStatus @default(PENDING)
+  /// 処理済みのアイテム数
+  progressCount Int        @default(0)
+  /// 処理対象の総アイテム数
+  totalCount    Int        @default(0)
+  /// エラーメッセージ
+  errorMessage  String?
+  /// ページネーション用のカーソル
+  cursor        String?
+  /// レコードの作成日時
+  createdAt     DateTime   @default(now())
+  /// レコードの最終更新日時
+  updatedAt     DateTime   @updatedAt
+
+  @@index([storeId])
+  @@map("task")
+}
+
+/// タスクの状態を表す列挙型
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  ERROR
 }
