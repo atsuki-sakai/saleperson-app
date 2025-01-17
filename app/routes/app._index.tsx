@@ -34,7 +34,6 @@ import { fetchPolicies } from "../services/shopify/fetchPolicys";
 import { useImportStates } from "../hooks/useImportState";
 import { CHUNK_SEPARATOR_SYMBOL } from "../lib/const";
 import {
-  upsertProducts,
   upsertOrders,
   upsertPolicy,
   upsertFaq,
@@ -141,15 +140,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           storeId: session.shop,
           type: "PRODUCT_SYNC",
           status: "IN_PROGRESS",
-          progressCount: 0,
-          totalCount: 0,
         },
       });
 
       // 2. 同期処理の開始をトリガー
       const origin = new URL(request.url).origin;
       console.log("origin", origin);
-      await fetch(`${origin}/api/syncProducts`, {
+      fetch(`${origin}/api/syncProducts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -157,15 +154,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         body: JSON.stringify({
           taskId: task.id,
           shopDomain: session.shop,
+          request: request,
         }),
       });
-
-      // const { products, hasNextPage, endCursor } = await fetchShopifyProducts(
-      //   request,
-      //   null,
-      //   5,
-      // );
-
       return json({
         success: true,
         type,
