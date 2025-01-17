@@ -1,19 +1,36 @@
+// services/shopify/fetchShopifyProducts.ts
 import { authenticate } from "../../shopify.server";
 import { Product } from "./types";
 
-/**
- * 商品データを取得する関数
+/** 
+ * Shopify Product Pagination Response
  */
-export const fetchShopifyProducts = async (
+export type ShopifyProductsPage = {
+  products: Product[];
+  hasNextPage: boolean;
+  endCursor: string | null;
+};
+
+/**
+ * 商品データを取得する関数 (ページネーション対応).
+ * 
+ * @param request   Remix等のRequest
+ * @param cursor    次のページを取得するためのカーソル (nullの場合、最初から)
+ * @param pageSize  1ページあたりの取得件数 (デフォルト: 50)
+ */
+export async function fetchShopifyProducts(
   request: Request,
-  cursor?: string
-): Promise<{ products: Product[], hasMore: boolean, nextCursor?: string }> => {
+  cursor: string | null = null,
+  pageSize = 50,
+): Promise<ShopifyProductsPage> {
+  // 1. Admin APIを取得
   const { admin } = await authenticate.admin(request);
 
+  // 2. GraphQLリクエストを投げる
   const response = await admin.graphql(
     `#graphql
-    query getProducts($cursor: String) {
-      products(first: 100, after: $cursor) {
+    query getProducts($cursor: String, $pageSize: Int) {
+      products(first: $pageSize, after: $cursor) {
         edges {
           node {
             id
@@ -96,18 +113,34 @@ export const fetchShopifyProducts = async (
       }
     }`,
     {
-      variables: { cursor }
-    }
+      variables: {
+        cursor,
+        pageSize,
+      },
+    },
   );
-  
 
-  const { data } = await response.json();
-  const products = data.products.edges.map((edge: any) => edge.node);
-  
+  // 3. レスポンスのステータスコードをチェック
+  if (response.status === 429) {
+    throw new Error("Throttled");
+  }
 
-  return {
-    products,
-    hasMore: data.products.pageInfo.hasNextPage,
-    nextCursor: data.products.pageInfo.endCursor
-  };
-};
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error("Shopify API Error:", response.status, errorBody);
+    throw new Error(`Shopify API Error: ${response.status}`);
+  }
+
+  // 4. レスポンスをJSON化し、エラーがあればthrow
+  const rawJson = await response.json();
+
+
+  // 6. ページネーション情報を取り出す
+  const data = rawJson.data.products;
+  const products = data.edges.map((edge: any) => edge.node) as Product[];
+  const hasNextPage: boolean = data.pageInfo.hasNextPage;
+  const endCursor: string | null = data.pageInfo.endCursor || null;
+
+  // 7. 返却
+  return { products, hasNextPage, endCursor };
+}

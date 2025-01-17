@@ -118,67 +118,61 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   /* -----------------------
    * type === "products"
    * -----------------------*/
+
   if (type === "products") {
     try {
-      if (type === "products") {
-        try {
-          // 1. タスクの作成または取得
-          const task = await prisma.task.upsert({
-            where: {
-              storeId_type: {
-                storeId: session.shop,
-                type: "PRODUCT_SYNC",
-              },
-            },
-            update: {
-              status: "IN_PROGRESS",
-              progressCount: 0,
-              totalCount: 0,
-              errorMessage: null,
-              cursor: null,
-              updatedAt: new Date(),
-            },
-            create: {
-              storeId: session.shop,
-              type: "PRODUCT_SYNC",
-              status: "IN_PROGRESS",
-              progressCount: 0,
-              totalCount: 0,
-            },
-          });
+      // 1. タスクの作成または取得
+      const task = await prisma.task.upsert({
+        where: {
+          storeId_type: {
+            storeId: session.shop,
+            type: "PRODUCT_SYNC",
+          },
+        },
+        update: {
+          status: "IN_PROGRESS",
+          progressCount: 0,
+          totalCount: 0,
+          errorMessage: null,
+          cursor: null,
+          updatedAt: new Date(),
+        },
+        create: {
+          storeId: session.shop,
+          type: "PRODUCT_SYNC",
+          status: "IN_PROGRESS",
+          progressCount: 0,
+          totalCount: 0,
+        },
+      });
 
-          // 2. 同期処理の開始をトリガー
-          const origin = process.env.BASE_URL;
-          await fetch(`${origin}/api/syncProducts`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              taskId: task.id,
-              shopDomain: session.shop,
-              cursor: null,
-            }),
-          });
+      // 2. 同期処理の開始をトリガー
+      const origin = new URL(request.url).origin;
+      console.log("origin", origin);
+      await fetch(`${origin}/api/syncProducts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          taskId: task.id,
+          shopDomain: session.shop,
+        }),
+      });
 
-          return json({
-            success: true,
-            type,
-            message:
-              "商品同期を開始しました。バックグラウンドで処理が継続されます。",
-            taskId: task.id,
-          });
-        } catch (error: any) {
-          console.error(error);
-          const errorMessage = error?.message || "不明なエラーが発生しました";
-          return {
-            success: false,
-            type,
-            store: null,
-            error: `同期の開始に失敗しました: ${errorMessage}`,
-          };
-        }
-      }
+      // const { products, hasNextPage, endCursor } = await fetchShopifyProducts(
+      //   request,
+      //   null,
+      //   5,
+      // );
+
+      return json({
+        success: true,
+        type,
+        message:
+          "商品同期を開始しました。バックグラウンドで処理が継続されます。",
+        taskId: task.id,
+      });
     } catch (error: any) {
       console.error(error);
       const errorMessage = error?.message || "不明なエラーが発生しました";
@@ -186,7 +180,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         success: false,
         type,
         store: null,
-        error: `インポート処理中にエラーが発生しました: ${errorMessage}`,
+        error: `同期の開始に失敗しました: ${errorMessage}`,
       };
     }
   } else if (type === "orders") {

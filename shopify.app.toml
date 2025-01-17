@@ -3,7 +3,7 @@
 client_id = "06d118204ece9125d19ace950e69ac2f"
 name = "saleperson-app"
 handle = "saleperson-app"
-application_url = "https://naturals-begin-performer-mounts.trycloudflare.com"
+application_url = "https://closely-reveal-year-creativity.trycloudflare.com"
 embedded = true
 
 [build]
@@ -13,13 +13,13 @@ include_config_on_deploy = true
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "write_products,read_orders,read_customers,read_legal_policies"
+scopes = "read_products,write_products,read_orders,read_customers,read_legal_policies"
 
 [auth]
 redirect_urls = [
-  "https://naturals-begin-performer-mounts.trycloudflare.com/auth/callback",
-  "https://naturals-begin-performer-mounts.trycloudflare.com/auth/shopify/callback",
-  "https://naturals-begin-performer-mounts.trycloudflare.com/api/auth/callback"
+  "https://closely-reveal-year-creativity.trycloudflare.com/auth/callback",
+  "https://closely-reveal-year-creativity.trycloudflare.com/auth/shopify/callback",
+  "https://closely-reveal-year-creativity.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
