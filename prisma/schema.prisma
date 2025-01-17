@@ -111,13 +111,14 @@ model Task {
   errorMessage  String?
   /// ページネーション用のカーソル
   cursor        String?
+  /// バッチ処理用のバッチID
+  batch         String?
   /// レコードの作成日時
   createdAt     DateTime   @default(now())
   /// レコードの最終更新日時
   updatedAt     DateTime   @updatedAt
 
   @@index([storeId])
-  @@unique([storeId, type])
   @@map("task")
 }
 
@@ -127,4 +128,5 @@ enum TaskStatus {
   IN_PROGRESS
   COMPLETED
   ERROR
+  INDEXING
 }

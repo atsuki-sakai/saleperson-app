@@ -33,17 +33,17 @@ import { fetchOrders } from "../services/shopify/fetchOrders";
 import { fetchPolicies } from "../services/shopify/fetchPolicys";
 import { useImportStates } from "../hooks/useImportState";
 import { CHUNK_SEPARATOR_SYMBOL } from "../lib/const";
-import {
-  upsertOrders,
-  upsertPolicy,
-  upsertFaq,
-  upsertProductMeta,
-} from "../models/documents.server";
-import type { KnowledgeType } from "../services/dify/api/types";
-import {
-  clensingProductDataToText,
-  clensingOrderDataToText,
-} from "../models/documents.server";
+// import {
+//   upsertOrders,
+//   upsertPolicy,
+//   upsertFaq,
+//   upsertProductMeta,
+// } from "../models/documents.server";
+import type { KnowledgeType } from "../services/dify/types";
+// import {
+//   clensingProductDataToText,
+//   clensingOrderDataToText,
+// } from "../models/documents.server";
 const storePolicyIncludeData = [
   { title: "返品と返金ポリシー" },
   { title: "プライバシーポリシー" },
@@ -119,60 +119,66 @@ export const action = async ({ request }: ActionFunctionArgs) => {
    * -----------------------*/
 
   if (type === "products") {
-    try {
-      // 1. タスクの作成または取得
-      const task = await prisma.task.upsert({
-        where: {
-          storeId_type: {
-            storeId: session.shop,
-            type: "PRODUCT_SYNC",
-          },
-        },
-        update: {
-          status: "IN_PROGRESS",
-          progressCount: 0,
-          totalCount: 0,
-          errorMessage: null,
-          cursor: null,
-          updatedAt: new Date(),
-        },
-        create: {
-          storeId: session.shop,
-          type: "PRODUCT_SYNC",
-          status: "IN_PROGRESS",
-        },
-      });
+    if (request.method !== "POST") {
+      return json({ error: "Method not allowed" }, { status: 405 });
+    }
 
-      // 2. 同期処理の開始をトリガー
-      const origin = new URL(request.url).origin;
-      console.log("origin", origin);
-      fetch(`${origin}/api/syncProducts`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+    const { shopDomain } = await request.json();
+
+    // Storeの確認
+    const store = await prisma.store.findUnique({
+      where: { storeId: shopDomain },
+      select: { accessToken: true },
+    });
+    if (!store?.accessToken) {
+      return json({ error: "Store or accessToken not found" }, { status: 404 });
+    }
+
+    // メインタスク（親タスク）を作成 (IN_PROGRESS)
+    const mainTask = await prisma.task.create({
+      data: {
+        storeId: shopDomain,
+        type: "PRODUCT_SYNC",
+        status: "IN_PROGRESS",
+      },
+    });
+  
+    try {
+      // 全商品を取得しつつ、300件単位でDifyへ送信
+      const allProducts = await fetchAllProducts(
+        shopDomain,
+        store.accessToken,
+        50,
+        mainTask.id, // メインタスクIDを渡す
+      );
+      console.log(`取得件数: ${allProducts.length}件`);
+
+      // すべての送信が完了したあと、メインタスクのステータスをさらに更新したい場合はここで行う
+      // 例: ここでCOMPLETEDにしておく
+      await prisma.task.update({
+        where: { id: mainTask.id },
+        data: {
+          status: "COMPLETED", // あるいはINDEXING -> COMPLETEDの流れでもOK
         },
-        body: JSON.stringify({
-          taskId: task.id,
-          shopDomain: session.shop,
-          request: request,
-        }),
       });
+      console.log("メインタスクをCOMPLETEDに更新");
+
       return json({
         success: true,
-        type,
-        message:
-          "商品同期を開始しました。バックグラウンドで処理が継続されます。",
-        taskId: task.id,
+        totalProducts: allProducts.length,
+        firstProductTitle: allProducts[0]?.title || "(no products)",
       });
-    } catch (error: any) {
-      console.error(error);
-      const errorMessage = error?.message || "不明なエラーが発生しました";
-      return {
-        success: false,
-        type,
-        store: null,
-        error: `同期の開始に失敗しました: ${errorMessage}`,
-      };
+    } catch (err: any) {
+      console.error("Error fetching all products:", err);
+      // エラーが出た場合、メインタスクをERRORに
+      await prisma.task.update({
+        where: { id: mainTask.id },
+        data: {
+          status: "ERROR",
+          errorMessage: err.message || "不明なエラーが発生しました",
+        },
+      });
+      return json({ error: err.message || "Unknown error" }, { status: 500 });
     }
   } else if (type === "orders") {
     /* -----------------------
@@ -191,11 +197,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         excludeEmails: emailsToExclude,
       });
 
-      const formattedContent = clensingOrderDataToText(orders);
+      // const formattedContent = clensingOrderDataToText(orders);
 
-      const store = await upsertOrders(session.shop, formattedContent);
+      // const store = await upsertOrders(session.shop, formattedContent);
 
-      return json({ success: true, type, store });
+      return json({ success: true, type, store: null });
     } catch (error: any) {
       const errorMessage = error?.message || "不明なエラーが発生しました";
       return {
@@ -223,9 +229,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         .replace(/&nbsp;/g, "")
         .trim();
 
-      const store = await upsertPolicy(session.shop, convertedNewPolicy);
+      // const store = await upsertPolicy(session.shop, convertedNewPolicy);
 
-      return json({ success: true, type, store });
+      return json({ success: true, type, store: null });
     } catch (error: any) {
       const errorMessage = error?.message || "不明なエラーが発生しました";
       return {
@@ -241,9 +247,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
       console.log("currentFaq", currentFaq);
 
-      const store = await upsertFaq(session.shop, currentFaq);
+      // const store = await upsertFaq(session.shop, currentFaq);
 
-      return json({ success: true, type, store });
+      return json({ success: true, type, store: null });
     } catch (error: any) {
       console.error("FAQ Creation Error:", error);
       return {
@@ -259,9 +265,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         "product_meta_fields",
       ) as string;
 
-      const store = await upsertProductMeta(session.shop, metaFieldDescription);
+      // const store = await upsertProductMeta(session.shop, metaFieldDescription);
 
-      return json({ success: true, type: "product_meta_fields", store });
+      return json({ success: true, type: "product_meta_fields", store: null });
     } catch (error: any) {
       const errorMessage = error?.message || "不明なエラーが発生しました";
       return json({
