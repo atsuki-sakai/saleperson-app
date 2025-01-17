@@ -62,7 +62,7 @@ export const action: ActionFunction = async ({ request }) => {
       },
     });
 
-    // 5) 次のページがあれば Pub/Sub再発行、なければCOMPLETED
+    // 5 次のページがあれば Pub/Sub再発行、なければCOMPLETED
     if (hasMore && nextCursor) {
       console.log("Publishing to PubSub with payload:", {
         taskId,
