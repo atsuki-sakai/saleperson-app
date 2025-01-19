@@ -13,6 +13,28 @@ export const quantityFetchProducts = `
             status
             totalInventory
             createdAt
+            category {
+              name
+              fullName
+            }
+            collections(first: 10) {
+              edges {
+                node {
+                  title
+                  handle
+                }
+              }
+            }
+            tags
+            featuredMedia {
+            	preview {
+                image {
+                  url	
+                  width
+                  height
+                }
+              }
+            }
             updatedAt
             options {
               id

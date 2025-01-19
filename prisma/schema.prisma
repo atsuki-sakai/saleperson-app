@@ -82,6 +82,7 @@ model Document {
   type      String
   /// 関連するストアのID（外部キー）
   storeId   String
+  /// 関連するデータセットのID（外部キー）
   datasetId String?
   /// レコードの作成日時
   createdAt DateTime @default(now()) @map("createdAt")
@@ -103,14 +104,8 @@ model Task {
   type          String
   /// タスクの状態
   status        TaskStatus @default(PENDING)
-  /// 処理済みのアイテム数
-  progressCount Int        @default(0)
-  /// 処理対象の総アイテム数
-  totalCount    Int        @default(0)
-  /// エラーメッセージ
-  errorMessage  String?
-  /// ページネーション用のカーソル
-  cursor        String?
+  /// datasetのID
+  datasetId     String?
   /// バッチ処理用のバッチID
   batch         String?
   /// レコードの作成日時

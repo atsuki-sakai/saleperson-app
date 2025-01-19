@@ -1,3 +1,5 @@
+// app/routes/app._index.tsx
+
 import { useEffect, useState } from "react";
 import { json } from "@remix-run/node";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
@@ -8,6 +10,7 @@ import {
   Form,
   useNavigation,
 } from "@remix-run/react";
+import { DifyService } from "../services/dify/DifyService";
 import { ImportCard, SyncCard } from "../components/ui";
 import { LocalModeCard } from "../components/common";
 import {
@@ -103,9 +106,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       documents: true,
     },
   });
+  const taskQueue = await prisma.task.findMany({
+    where: {
+      storeId: session.shop,
+      type: "PRODUCT_CHUNK_SYNC",
+    },
+    select: {
+      datasetId: true,
+      batch: true,
+      id: true,
+    },
+  });
   return json({
     storeId: session.shop,
     store: store || null,
+    taskQueue: taskQueue || null,
   });
 };
 
@@ -113,104 +128,113 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const formData = await request.formData();
   const type = formData.get("type") as KnowledgeType;
+  const origin = new URL(request.url).origin;
 
   /* -----------------------
    * type === "products"
    * -----------------------*/
 
   if (type === "products") {
-    if (request.method !== "POST") {
-      return json({ error: "Method not allowed" }, { status: 405 });
-    }
-
-    const { shopDomain } = await request.json();
-
-    // Storeの確認
-    const store = await prisma.store.findUnique({
-      where: { storeId: shopDomain },
-      select: { accessToken: true },
-    });
-    if (!store?.accessToken) {
-      return json({ error: "Store or accessToken not found" }, { status: 404 });
-    }
-
-    // メインタスク（親タスク）を作成 (IN_PROGRESS)
-    const mainTask = await prisma.task.create({
-      data: {
-        storeId: shopDomain,
-        type: "PRODUCT_SYNC",
-        status: "IN_PROGRESS",
-      },
-    });
-  
     try {
-      // 全商品を取得しつつ、300件単位でDifyへ送信
-      const allProducts = await fetchAllProducts(
-        shopDomain,
-        store.accessToken,
-        50,
-        mainTask.id, // メインタスクIDを渡す
-      );
-      console.log(`取得件数: ${allProducts.length}件`);
-
-      // すべての送信が完了したあと、メインタスクのステータスをさらに更新したい場合はここで行う
-      // 例: ここでCOMPLETEDにしておく
-      await prisma.task.update({
-        where: { id: mainTask.id },
+      const mainTask = await prisma.task.create({
         data: {
-          status: "COMPLETED", // あるいはINDEXING -> COMPLETEDの流れでもOK
+          storeId: session.shop,
+          type: "PRODUCT_SYNC",
+          status: "IN_PROGRESS",
         },
       });
-      console.log("メインタスクをCOMPLETEDに更新");
-
+      console.log("origin", origin);
+      fetch(`${origin}/api/syncProducts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          shopDomain: session.shop,
+          mainTaskId: mainTask.id,
+        }),
+      });
       return json({
         success: true,
-        totalProducts: allProducts.length,
-        firstProductTitle: allProducts[0]?.title || "(no products)",
+        type,
+        message:
+          "商品同期を開始しました。バックグラウンドで処理が継続されます。",
+        taskId: mainTask.id,
       });
-    } catch (err: any) {
-      console.error("Error fetching all products:", err);
-      // エラーが出た場合、メインタスクをERRORに
-      await prisma.task.update({
-        where: { id: mainTask.id },
-        data: {
-          status: "ERROR",
-          errorMessage: err.message || "不明なエラーが発生しました",
-        },
-      });
-      return json({ error: err.message || "Unknown error" }, { status: 500 });
-    }
-  } else if (type === "orders") {
-    /* -----------------------
-     * type === "ORDERS"
-     * -----------------------*/
-    try {
-      // 注文データの取得と保存を行う関数
-
-      const excludeEmails = formData.get("excludeEmails") as string;
-      const emailsToExclude = excludeEmails
-        ?.split(",")
-        .map((email) => email.trim())
-        .filter((email) => email.length > 0);
-
-      const { orders } = await fetchOrders(request, {
-        excludeEmails: emailsToExclude,
-      });
-
-      // const formattedContent = clensingOrderDataToText(orders);
-
-      // const store = await upsertOrders(session.shop, formattedContent);
-
-      return json({ success: true, type, store: null });
     } catch (error: any) {
+      console.error(error);
       const errorMessage = error?.message || "不明なエラーが発生しました";
       return {
         success: false,
         type,
         store: null,
-        error: `注文データのインポート中にエラーが発生しました: ${errorMessage}`,
+        error: `同期の開始に失敗しました: ${errorMessage}`,
       };
     }
+  } else if (type === "orders") {
+    /* -----------------------
+     * type === "ORDERS"
+     * -----------------------*/
+
+    try {
+      const taskQueue = await prisma.task.findMany({
+        where: {
+          storeId: session.shop,
+          type: "PRODUCT_CHUNK_SYNC",
+        },
+        select: {
+          datasetId: true,
+          batch: true,
+          id: true,
+        },
+      });
+      console.log("taskQueue", taskQueue);
+
+      taskQueue.map((task) => {
+        fetch(`${origin}/api/checkIndexing`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            datasetId: task.datasetId,
+            batch: task.batch,
+            taskId: task.id,
+            storeId: session.shop,
+          }),
+        });
+      });
+    } catch (error: any) {
+      console.error(error);
+    }
+
+    // try {
+    //   // 注文データの取得と保存を行う関数
+
+    //   const excludeEmails = formData.get("excludeEmails") as string;
+    //   const emailsToExclude = excludeEmails
+    //     ?.split(",")
+    //     .map((email) => email.trim())
+    //     .filter((email) => email.length > 0);
+
+    //   const { orders } = await fetchOrders(request, {
+    //     excludeEmails: emailsToExclude,
+    //   });
+
+    //   // const formattedContent = clensingOrderDataToText(orders);
+
+    //   // const store = await upsertOrders(session.shop, formattedContent);
+
+    //   return json({ success: true, type, store: null });
+    // } catch (error: any) {
+    //   const errorMessage = error?.message || "不明なエラーが発生しました";
+    //   return {
+    //     success: false,
+    //     type,
+    //     store: null,
+    //     error: `注文データのインポート中にエラーが発生しました: ${errorMessage}`,
+    //   };
+    // }
   } else if (type === "policy") {
     /* -----------------------
      * type === "policy"
