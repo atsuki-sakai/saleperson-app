@@ -14,9 +14,9 @@ import {
   LITE_PLAN,
   MONTHLY_PLAN,
   ANNUAL_PLAN,
-  PLAN_CONFIGS,
   PlanFeature,
-} from "../../app/lib/const";
+} from "../lib/types";
+import { PLAN_CONFIGS } from "../lib/constants";
 import { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 import { Form, useLoaderData } from "@remix-run/react";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -73,7 +73,7 @@ export default function SelectPlan() {
     ? billingCheck.appSubscriptions[0]
     : null;
   const currentPlan = currentSubscription
-    ? PLAN_CONFIGS.find((plan) => plan.id === currentSubscription.name)
+    ? PLAN_CONFIGS.find((plan: any) => plan.id === currentSubscription.name)
     : null;
 
   return (
@@ -87,7 +87,7 @@ export default function SelectPlan() {
               </Text>
 
               <InlineStack gap="200" align="start">
-                {PLAN_CONFIGS.map((plan) => (
+                {PLAN_CONFIGS.map((plan: any) => (
                   <Card key={plan.id}>
                     <BlockStack gap="400">
                       <BlockStack gap="200">

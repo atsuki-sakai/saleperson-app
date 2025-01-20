@@ -33,14 +33,14 @@ import { ArchiveIcon, CartIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
 import { fetchPolicies } from "../services/shopify/fetchPolicys";
 import { useImportStates } from "../hooks/useImportState";
-import { CHUNK_SEPARATOR_SYMBOL } from "../lib/const";
+import { CHUNK_SEPARATOR_SYMBOL } from "../lib/constants";
 // import {
 //   upsertOrders,
 //   upsertPolicy,
 //   upsertFaq,
 //   upsertProductMeta,
 // } from "../models/documents.server";
-import type { KnowledgeType } from "../services/dify/types";
+import type { KnowledgeType } from "../lib/types";
 // import {
 //   clensingProductDataToText,
 //   clensingOrderDataToText,

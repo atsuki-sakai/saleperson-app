@@ -17,7 +17,14 @@ export type PlanConfig = {
   description: string;
 };
 
-export type KnowledgeType = "products" | "orders" | "policy" | "faq" | "product_meta_fields" | "system_prompt";
+export type KnowledgeType =
+  | "products"
+  | "orders"
+  | "policy"
+  | "faq"
+  | "product_meta_fields"
+  | "task_sync"
+  | "system_prompt";
 
 /// Shopifyストアの設定とメタデータ
 export interface Store {

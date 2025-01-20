@@ -17,13 +17,9 @@ import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { useState } from "react";
 import { handleStoreUpsert } from "../models/documents.server";
-import {
-  createDocumentFromText,
-  updateDocumentByText,
-} from "../services/dify/api/documents";
 import { Form, useActionData } from "@remix-run/react";
 import { useLoaderData } from "@remix-run/react";
-import { CHUNK_SEPARATOR_SYMBOL, CHUNK_MAX_TOKENS } from "../lib/const";
+import { CHUNK_SEPARATOR_SYMBOL, CHUNK_MAX_TOKENS } from "../lib/constants";
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
 
@@ -401,4 +397,3 @@ export default function ChatPage() {
     </Page>
   );
 }
-
