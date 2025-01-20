@@ -1,7 +1,7 @@
 // app/hooks/useImportStates.ts
 import { useState } from "react";
-import { KNOWLEDGE_TYPE_TO_STATE_KEY } from "../lib/const";
-import { KnowledgeType } from "../services/dify/api/types";
+import { KNOWLEDGE_TYPE_TO_STATE_KEY } from "../services/dify/types";
+import { KnowledgeType } from "../services/dify/types";
 
 interface ImportState {
   isLoading: boolean;
@@ -27,6 +27,8 @@ export function useImportStates(): UseImportStatesReturn {
     policy:              { isLoading: false, progress: 0, status: "idle" },
     faq:                 { isLoading: false, progress: 0, status: "idle" },
     product_meta_fields: { isLoading: false, progress: 0, status: "idle" },
+    system_prompt:       { isLoading: false, progress: 0, status: "idle" },
+    task_sync:           { isLoading: false, progress: 0, status: "idle" },
   });
 
   function setProcessing(type: KnowledgeType) {

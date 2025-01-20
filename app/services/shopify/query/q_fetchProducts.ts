@@ -1,4 +1,4 @@
-export const quantityFetchProducts = `
+export const q_FetchProducts = `
     #graphql
     query getProducts($cursor: String, $pageSize: Int) {
       products(first: $pageSize, after: $cursor) {

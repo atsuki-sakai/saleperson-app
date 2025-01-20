@@ -10,9 +10,9 @@ import {
   Form,
   useNavigation,
 } from "@remix-run/react";
-import { DifyService } from "../services/dify/DifyService";
 import { ImportCard, SyncCard } from "../components/ui";
 import { LocalModeCard } from "../components/common";
+import { upsertPolicy } from "../models/documents.server";
 import {
   Page,
   Layout,
@@ -31,8 +31,6 @@ import { htmlTagRemove } from "../lib/helper";
 import { prisma } from "../db.server";
 import { ArchiveIcon, CartIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
-import { fetchShopifyProducts } from "../services/shopify/fetchShopifyProducts";
-import { fetchOrders } from "../services/shopify/fetchOrders";
 import { fetchPolicies } from "../services/shopify/fetchPolicys";
 import { useImportStates } from "../hooks/useImportState";
 import { CHUNK_SEPARATOR_SYMBOL } from "../lib/const";
@@ -56,6 +54,7 @@ const storePolicyIncludeData = [
   { title: "特定商取引法に基づく表記" },
   { title: "購入オプションのキャンセルポリシー" },
 ];
+import { KNOWLEDGE_TYPE_TO_STATE_KEY } from "../services/dify/types";
 
 const productIncludeData = [
   { title: "商品名" },
@@ -175,66 +174,41 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     /* -----------------------
      * type === "ORDERS"
      * -----------------------*/
-
     try {
-      const taskQueue = await prisma.task.findMany({
-        where: {
+      const mainTask = await prisma.task.create({
+        data: {
           storeId: session.shop,
-          type: "PRODUCT_CHUNK_SYNC",
-        },
-        select: {
-          datasetId: true,
-          batch: true,
-          id: true,
+          type: "ORDER_SYNC",
+          status: "IN_PROGRESS",
         },
       });
-      console.log("taskQueue", taskQueue);
-
-      taskQueue.map((task) => {
-        fetch(`${origin}/api/checkIndexing`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            datasetId: task.datasetId,
-            batch: task.batch,
-            taskId: task.id,
-            storeId: session.shop,
-          }),
-        });
+      console.log("origin", origin);
+      fetch(`${origin}/api/syncOrders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          shopDomain: session.shop,
+          mainTaskId: mainTask.id,
+        }),
+      });
+      return json({
+        success: true,
+        type,
+        message:
+          "注文同期を開始しました。バックグラウンドで処理が継続されます。",
+        taskId: mainTask.id,
       });
     } catch (error: any) {
-      console.error(error);
+      const errorMessage = error?.message || "注文同期の開始に失敗しました";
+      return {
+        success: false,
+        type,
+        store: null,
+        error: errorMessage,
+      };
     }
-
-    // try {
-    //   // 注文データの取得と保存を行う関数
-
-    //   const excludeEmails = formData.get("excludeEmails") as string;
-    //   const emailsToExclude = excludeEmails
-    //     ?.split(",")
-    //     .map((email) => email.trim())
-    //     .filter((email) => email.length > 0);
-
-    //   const { orders } = await fetchOrders(request, {
-    //     excludeEmails: emailsToExclude,
-    //   });
-
-    //   // const formattedContent = clensingOrderDataToText(orders);
-
-    //   // const store = await upsertOrders(session.shop, formattedContent);
-
-    //   return json({ success: true, type, store: null });
-    // } catch (error: any) {
-    //   const errorMessage = error?.message || "不明なエラーが発生しました";
-    //   return {
-    //     success: false,
-    //     type,
-    //     store: null,
-    //     error: `注文データのインポート中にエラーが発生しました: ${errorMessage}`,
-    //   };
-    // }
   } else if (type === "policy") {
     /* -----------------------
      * type === "policy"
@@ -253,9 +227,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         .replace(/&nbsp;/g, "")
         .trim();
 
-      // const store = await upsertPolicy(session.shop, convertedNewPolicy);
+      const store = await upsertPolicy(session.shop, convertedNewPolicy);
 
-      return json({ success: true, type, store: null });
+      return json({ success: true, type, store: store });
     } catch (error: any) {
       const errorMessage = error?.message || "不明なエラーが発生しました";
       return {
@@ -301,6 +275,40 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         error: errorMessage,
       });
     }
+  } else if (type == "task_sync") {
+    try {
+      const taskQueue = await prisma.task.findMany({
+        where: {
+          storeId: session.shop,
+          type: "PRODUCT_CHUNK_SYNC",
+        },
+        select: {
+          datasetId: true,
+          batch: true,
+          id: true,
+        },
+      });
+      console.log("taskQueue", taskQueue);
+
+      taskQueue.map((task) => {
+        fetch(`${origin}/api/checkIndexing`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            datasetId: task.datasetId,
+            batch: task.batch,
+            taskId: task.id,
+            storeId: session.shop,
+          }),
+        });
+      });
+
+      return json({ success: true, type, store: null });
+    } catch (error: any) {
+      console.error(error);
+    }
   }
   // 無効なtype
   return { success: false, type, error: "無効なインポートタイプです" };
@@ -311,7 +319,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
  * ------------------------------------------- */
 
 export default function Index() {
-  const { store } = useLoaderData<typeof loader>();
+  const { store, taskQueue } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionResponse>();
   const navigation = useNavigation();
   const [currentStore, setCurrentStore] = useState<any | null>(store);
@@ -350,6 +358,8 @@ export default function Index() {
     policy: false,
     faq: false,
     product_meta_fields: false,
+    task_sync: false,
+    system_prompt: false,
   });
 
   const { importStates, setProcessing, setCompleted, setError } =
@@ -359,9 +369,15 @@ export default function Index() {
   useEffect(() => {
     if (
       actionData &&
-      ["products", "orders", "policy", "faq", "product_meta_fields"].includes(
-        actionData.type,
-      )
+      [
+        "products",
+        "orders",
+        "policy",
+        "faq",
+        "product_meta_fields",
+        "task_sync",
+        "system_prompt",
+      ].includes(actionData.type)
     ) {
       const { type, success, error } = actionData;
 
@@ -467,9 +483,17 @@ export default function Index() {
                   </Text>
 
                   <Divider />
-                  <Text as="h3" variant="headingLg">
-                    １.Shopifyのデータをインポート
-                  </Text>
+                  <InlineStack gap="400">
+                    <Text as="h3" variant="headingLg">
+                      １.Shopifyのデータをインポート
+                    </Text>
+                    <Form method="post">
+                      <input type="hidden" name="type" value="task_sync" />
+                      <Button size="micro" tone="success" submit>
+                        データを更新
+                      </Button>
+                    </Form>
+                  </InlineStack>
                   <InlineStack gap="400">
                     {hasProductKnowledge ? (
                       <SyncCard
@@ -479,7 +503,10 @@ export default function Index() {
                         includeDatas={productIncludeData}
                         type="products"
                         store={currentStore}
-                        isLoading={importStates.products.isLoading}
+                        isLoading={
+                          taskQueue.length > 0 ||
+                          importStates.products.isLoading
+                        }
                         status={importStates.products.status}
                         progress={importStates.products.progress}
                         importStates={importStates}
@@ -493,7 +520,10 @@ export default function Index() {
                         includeDatas={productIncludeData}
                         type="products"
                         store={currentStore}
-                        isLoading={importStates.products.isLoading}
+                        isLoading={
+                          taskQueue.length > 0 ||
+                          importStates.products.isLoading
+                        }
                         status={importStates.products.status}
                         progress={importStates.products.progress}
                         isCreated={false}
@@ -510,7 +540,9 @@ export default function Index() {
                         includeDatas={orderIncludeData}
                         type="orders"
                         store={currentStore}
-                        isLoading={importStates.orders.isLoading}
+                        isLoading={
+                          taskQueue.length > 0 || importStates.orders.isLoading
+                        }
                         status={importStates.orders.status}
                         progress={importStates.orders.progress}
                         importStates={importStates}
@@ -524,7 +556,9 @@ export default function Index() {
                         includeDatas={orderIncludeData}
                         type="orders"
                         store={currentStore}
-                        isLoading={importStates.orders.isLoading}
+                        isLoading={
+                          taskQueue.length > 0 || importStates.orders.isLoading
+                        }
                         status={importStates.orders.status}
                         progress={importStates.orders.progress}
                         isCreated={false}
@@ -541,7 +575,9 @@ export default function Index() {
                         includeDatas={storePolicyIncludeData}
                         type="policy"
                         store={currentStore}
-                        isLoading={importStates.policy.isLoading}
+                        isLoading={
+                          taskQueue.length > 0 || importStates.policy.isLoading
+                        }
                         status={importStates.policy.status}
                         progress={importStates.policy.progress}
                         importStates={importStates}
@@ -555,7 +591,9 @@ export default function Index() {
                         includeDatas={storePolicyIncludeData}
                         type="policy"
                         store={currentStore}
-                        isLoading={importStates.policy.isLoading}
+                        isLoading={
+                          taskQueue.length > 0 || importStates.policy.isLoading
+                        }
                         status={importStates.policy.status}
                         progress={importStates.policy.progress}
                         isCreated={false}
@@ -668,11 +706,12 @@ export default function Index() {
                             : "よくある質問のナレッジを作成"}
                         </Button>
                       </Box>
-                      {importStates.faq.status === "processing" && (
-                        <Box paddingBlockStart="300">
-                          <ProgressBar progress={importStates.faq.progress} />
-                        </Box>
-                      )}
+                      {taskQueue.length > 0 ||
+                        (importStates.faq.status === "processing" && (
+                          <Box paddingBlockStart="300">
+                            <ProgressBar progress={importStates.faq.progress} />
+                          </Box>
+                        ))}
                       {importStates.faq.status === "completed" &&
                         showSuccessMessage.faq && (
                           <Box paddingBlockStart="300">
@@ -763,17 +802,18 @@ export default function Index() {
                           />
                         </Box>
                       )}
-                      {importStates.product_meta_fields.status ===
-                        "completed" &&
-                        showSuccessMessage.product_meta_fields && (
-                          <Box paddingBlockStart="300">
-                            <Banner title="作成完了" tone="success">
-                              <p>
-                                商品メタフィールドのナレッジが正常に作成されました。
-                              </p>
-                            </Banner>
-                          </Box>
-                        )}
+                      {taskQueue.length > 0 ||
+                        (importStates.product_meta_fields.status ===
+                          "completed" &&
+                          showSuccessMessage.product_meta_fields && (
+                            <Box paddingBlockStart="300">
+                              <Banner title="作成完了" tone="success">
+                                <p>
+                                  商品メタフィールドのナレッジが正常に作成されました。
+                                </p>
+                              </Banner>
+                            </Box>
+                          ))}
                       {importStates.product_meta_fields.status === "error" &&
                         actionData?.type === "product_meta_fields" && (
                           <Box paddingBlockStart="300">

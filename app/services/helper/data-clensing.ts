@@ -4,7 +4,7 @@
 // ------------------------------------------
 import { CHUNK_SEPARATOR_SYMBOL } from "../dify/const";
 import { Product } from "../../services/shopify/types";
-import { a } from "node_modules/vite/dist/node/types.d-aGj9QkWt";
+import { Order } from "../../services/shopify/types";
 
 const DIFY_BASE_URL = process.env.DIFY_BASE_URL!;
 const DIFY_GENERATE_SUMMARY_AND_TARGETS_API_KEY = process.env.DIFY_GENERATE_SUMMARY_AND_TARGETS_API_KEY!;
@@ -37,6 +37,16 @@ export async function convertProductToText(product: Product, shop: string) {
   return productResult.concat(CHUNK_SEPARATOR_SYMBOL);
 }
 
+/*
+ * 注文をテキスト化する
+ */
+export async function convertOrdersToText(orders:Order[]) {
+  const convertedOrders = orders.map((order: Order)=>{
+    return buildFullOrderText(order).concat(CHUNK_SEPARATOR_SYMBOL);
+  });
+  return convertedOrders.join("");
+}
+
 /**
  * Difyへ送ってサマリーを生成し、最終的に連結したテキストを返す
  * （商品数が多いと時間がかかります）
@@ -53,10 +63,10 @@ export async function convertProductsToText(products: Product[], shop: string) {
  * 商品オブジェクトの全プロパティをテキスト化するサンプル
  * ShopifyのGraphQL構造に基づいて多くのフィールドを列挙
  */
-function buildFullProductText(product: Product, shop: string): string {
+function buildFullProductText(product: Product, shopDomain: string): string {
   // 基本情報
   const handle = product.handle || "";
-  const productUrl = `https://${shop}/products/${handle}`;
+  const productUrl = `https://${shopDomain}/products/${handle}`;
   const productId = product.id.replace("gid://shopify/Product/", "");
   const vendor = product.vendor || "";
   const productType = product.productType || "";
@@ -171,6 +181,29 @@ ${variantsText}
 【メタフィールド一覧】
 ${metafieldsText}
 `.trim();
+}
+
+/**
+ * 注文をテキスト化する
+ */
+function buildFullOrderText(order: Order): string {
+  return `注文日:${order.createdAt.toLocaleString()}
+  注文番号: ${order.name || "不明"}
+  注文ID: ${order.id.replace("gid://shopify/Order/", "")}
+  注文金額: ${order.currentTotalPriceSet?.presentmentMoney.amount || "不明"} ${order.currentTotalPriceSet.presentmentMoney.currencyCode}
+  注文者: ${order.customer?.displayName || "不明"}
+  注文者メールアドレス: ${order.customer?.email || "不明"}
+  注文者ID: ${order.customer?.id.replace("gid://shopify/Customer/", "") || "不明な注文者ID"}
+  注文者電話番号: ${order.customer?.phone || "不明"}
+  注文タグ: ${order.customer?.tags || "なし"}
+  注文メモ: ${order.note || "なし"}
+  商品: ${order.lineItems?.edges
+    ?.map((edge: any) => edge.node)
+    .filter(Boolean)
+    .map(
+      (item: any) =>
+        `${item.title} x ${item.quantity}点 (${item.originalTotalSet?.presentmentMoney.amount}円)`,
+    ).join(", ")}`;
 }
 
 /**
