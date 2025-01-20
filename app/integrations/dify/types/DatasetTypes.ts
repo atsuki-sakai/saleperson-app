@@ -11,6 +11,9 @@ export interface ICreateDatasetRequest {
     provider?: 'vendor' | 'external';
     external_knowledge_api_id?: string;
     external_knowledge_id?: string;
+    embedding_model?: string;
+    embedding_model_provider?: string;
+    embedding_available?: boolean;
   }
   
   export interface ICreateDatasetResponse {

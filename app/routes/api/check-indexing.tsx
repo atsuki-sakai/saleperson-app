@@ -2,7 +2,7 @@
 
 import { json } from "@remix-run/node";
 import { ActionFunctionArgs } from "@remix-run/node";
-import { DifyService } from "../../services/dify/DifyService";
+import { DifyService } from "../../integrations/dify/DifyService";
 import { prisma } from "../../db.server";
 
 export async function action({ request }: ActionFunctionArgs) {

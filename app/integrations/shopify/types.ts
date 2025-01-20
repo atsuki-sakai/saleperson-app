@@ -9,6 +9,23 @@ export type Product = {
   totalInventory: number;
   createdAt: string;
   updatedAt: string;
+  category: {
+    name: string;
+    fullName: string;
+  };
+  collections: {
+    edges: { node: { title: string; handle: string } }[];
+  };
+  tags: string;
+  featuredMedia: {
+    preview: {
+      image: {
+        url: string;
+        width: number;
+        height: number;
+      };
+    };
+  };
   options: { id: string; name: string; values: string[] }[];
   priceRangeV2: {
     minVariantPrice: { amount: string; currencyCode: string };

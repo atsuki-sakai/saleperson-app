@@ -1,4 +1,4 @@
-// app/services/shopify/serverApi.ts
+// app/integrations/shopify/serverApi.ts
 import fetch from "node-fetch";
 
 type ShopifyGraphQLOptions = {

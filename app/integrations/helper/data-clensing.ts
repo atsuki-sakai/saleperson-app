@@ -3,8 +3,8 @@
 // 商品1件ずつ2秒おきにDifyへ投げ、全プロパティをテキスト化した例
 // ------------------------------------------
 import { CHUNK_SEPARATOR_SYMBOL } from "../dify/const";
-import { Product } from "../../services/shopify/types";
-import { Order } from "../../services/shopify/types";
+import { Product } from "../../integrations/shopify/types";
+import { Order } from "../../integrations/shopify/types";
 
 const DIFY_BASE_URL = process.env.DIFY_BASE_URL!;
 const DIFY_GENERATE_SUMMARY_AND_TARGETS_API_KEY = process.env.DIFY_GENERATE_SUMMARY_AND_TARGETS_API_KEY!;

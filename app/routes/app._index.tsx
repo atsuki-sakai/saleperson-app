@@ -31,7 +31,7 @@ import { htmlTagRemove } from "../lib/helper";
 import { prisma } from "../db.server";
 import { ArchiveIcon, CartIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
-import { fetchPolicies } from "../services/shopify/fetchPolicys";
+import { fetchPolicies } from "../integrations/shopify/fetchPolicys";
 import { useImportStates } from "../hooks/useImportState";
 import { CHUNK_SEPARATOR_SYMBOL } from "../lib/constants";
 // import {
@@ -54,7 +54,7 @@ const storePolicyIncludeData = [
   { title: "特定商取引法に基づく表記" },
   { title: "購入オプションのキャンセルポリシー" },
 ];
-import { KNOWLEDGE_TYPE_TO_STATE_KEY } from "../services/dify/types";
+import { KNOWLEDGE_TYPE_TO_STATE_KEY } from "../integrations/dify/types";
 
 const productIncludeData = [
   { title: "商品名" },

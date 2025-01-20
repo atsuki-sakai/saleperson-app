@@ -1,12 +1,12 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { prisma } from "../../db.server";
-import { shopifyGraphQLCall } from "../../services/shopify/shopifyGraphQlCall";
-import { q_FetchOrders } from "../../services/shopify/query/q_fetchOrders";
-import { DifyService } from "../../services/dify/DifyService";
-import { CHUNK_SEPARATOR_SYMBOL } from "../../services/dify/const";
-import { ICreateDocumentByTextRequest } from "../../services/dify/types";
-import { convertOrdersToText } from "../../services/helper/data-clensing";
+import { shopifyGraphQLCall } from "../../integrations/shopify/shopifyGraphQlCall";
+import { q_FetchOrders } from "../../integrations/shopify/query/q_fetchOrders";
+import { DifyService } from "../../integrations/dify/DifyService";
+import { CHUNK_SEPARATOR_SYMBOL } from "../../integrations/dify/const";
+import { ICreateDocumentByTextRequest } from "../../integrations/dify/types";
+import { convertOrdersToText } from "../../integrations/helper/data-clensing";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

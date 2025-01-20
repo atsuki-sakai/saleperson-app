@@ -65,9 +65,18 @@ export interface IDeleteDocumentResponse {
 }
 
 export interface IGetIndexingStatusResponse {
-  status: string;
-  total_count: number;
-  completed_count: number;
-  failed_count: number;
-  error_message?: string;
+  data: {
+    id: string;
+    indexing_status: string;
+    processing_started_at: number;
+    parsing_completed_at: number;
+      cleaning_completed_at: number;
+      splitting_completed_at: number;
+      completed_at: number;
+      paused_at: number | null;
+      error: string | null;
+    stopped_at: number | null;
+    completed_segments: number;
+    total_segments: number;
+  }[];
 }

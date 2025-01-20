@@ -1,7 +1,7 @@
-// services/shopify/fetchShopifyProducts.ts
+// integrations/shopify/fetchShopifyProducts.ts
 import { authenticate } from "../../shopify.server";
 import { Product } from "./types";
-import { quantityFetchProducts } from "./query/q_fetchProducts";
+import { q_FetchProducts } from "./query/q_fetchProducts";
 /** 
  * Shopify Product Pagination Response
  */
@@ -28,7 +28,7 @@ export async function fetchShopifyProducts(
 
   // 2. GraphQLリクエストを投げる
   const response = await admin.graphql(
-    quantityFetchProducts,
+    q_FetchProducts,
     {
       variables: {
         cursor,
