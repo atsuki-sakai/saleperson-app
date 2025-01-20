@@ -143,7 +143,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         },
       });
       console.log("origin", origin);
-      fetch(`${origin}/api/syncProducts`, {
+      fetch(`${origin}/api/sync-products`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -183,7 +183,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         },
       });
       console.log("origin", origin);
-      fetch(`${origin}/api/syncOrders`, {
+      fetch(`${origin}/api/sync-orders`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -291,7 +291,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       console.log("taskQueue", taskQueue);
 
       taskQueue.map((task) => {
-        fetch(`${origin}/api/checkIndexing`, {
+        fetch(`${origin}/api/check-indexing`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
