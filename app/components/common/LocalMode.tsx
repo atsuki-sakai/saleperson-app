@@ -1,5 +1,5 @@
 import { Card, Text } from "@shopify/polaris";
-import { LOCAL_MODE } from "../../lib/const";
+import { LOCAL_MODE } from "../../lib/constants";
 
 export function LocalModeCard() {
   return (
