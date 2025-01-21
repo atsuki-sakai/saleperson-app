@@ -1,3 +1,6 @@
+<!-- ★マークダウンライブラリのスクリプトは不要になったので削除します -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> -->
+
 {% style %}
   .salesperson-chat-widget {
     position: fixed;
@@ -64,6 +67,10 @@
     line-height: 1.5;
     position: relative;
     animation: fadeIn 0.3s ease-out;
+    /* 
+      ここに white-space: pre-wrap; があるとHTMLタグの改行がそのまま出る＆
+      タグがテキストとして扱われやすくなるので削除
+    */
   }
 
   .salesperson-chat-widget__message--ai {
@@ -226,375 +233,383 @@
 <div id="chatWidget" class="salesperson-chat-widget">
   {% unless request.page_type == 'customers/login' or request.page_type == 'customers/register' %}
     {% if customer %}
-      <script type="application/json" id="shopify-products-data">
+      <script type="application/json" id="shopify-customer-data">
         {
-          "products": [
-            {% for product in collections.all.products %}
-              {
-                "商品ID": {{ product.id | json }},
-                "商品タイトル": {{ product.title | json }},
-                "商品ハンドル": {{ product.handle | json }},
-                "商品説明": {{ product.description | json }},
-                "商品ページ": "{{ product.url }}",
-                "商品タイプ": {{ product.type | json }},
-                "ベンダー": {{ product.vendor | json }},
-                "在庫": {{ product.available | json }},
-                "販売価格": {{ product.price | money_without_currency | json }},
-                "割引前価格": {{ product.compare_at_price | money_without_currency | json }},
-                "バリエーション": [
-                  {% for variant in product.variants %}
-                    {
-                      "バリエーションID": {{ variant.id | json }},
-                      "バリエーションタイトル": {{ variant.title | json }},
-                      "SKU": {{ variant.sku | json }},
-                      "在庫": {{ variant.available | json }},
-                      "販売価格": {{ variant.price | money_without_currency | json }},
-                      "割引前価格": {{ variant.compare_at_price | money_without_currency | json }},
-                      "在庫数": {{ variant.inventory_quantity | json }}
-                    }{% unless forloop.last %},{% endunless %}
-                  {% endfor %}
-                ]
-              }{% unless forloop.last %},{% endunless %}
-            {% endfor %}
-          ]
+          "customer_name": "{{ customer.name }}",
+          "customer_id": "{{ customer.id }}"
         }
       </script>
-
       <script>
-        class ChatWidget {
-          constructor() {
-            this.chatWidget = document.getElementById("chatWidget");
-            this.toggleButton = document.getElementById("chatToggleButton");
-            this.productsData = JSON.parse(
-              document.getElementById("shopify-products-data").textContent
-            );
-            this.orderData = {};
-            this.currentConversationId = null;
-            this.messageContent = '';
-            this.apiUrl = 'https://api.dify.ai/v1/chat-messages';
-            this.apiKey = 'app-SpHrWUS88h2PrvZOz9ObzjFQ';
-            this.isTyping = false;
-            this.messages = [];
+  class ChatWidget {
+    constructor() {
+      this.chatWidget = document.getElementById("chatWidget");
+      this.toggleButton = document.getElementById("chatToggleButton");
 
-            this.initialize();
-          }
+      // --- (1) ローカルストレージから会話IDを取得 ---
+      const savedConversationId = localStorage.getItem('conversation_id');
+      this.currentConversationId = savedConversationId ? savedConversationId : null;
 
-          initialize() {
-            this.renderInitialUI();
-            this.setupEventListeners();
-            this.sendInitialMessage();
-          }
+      // --- (2) ローカルストレージからメッセージ履歴を復元 ---
+      const savedMessages = localStorage.getItem('chat_messages');
+      this.messages = savedMessages ? JSON.parse(savedMessages) : [];
 
-          renderInitialUI() {
-            this.chatWidget.innerHTML = `
-              <div class="salesperson-chat-widget__header">
-                <div class="salesperson-chat-widget__header-title">
-                  <div class="salesperson-chat-widget__avatar">👩</div>
-                  <span>接客アシスタント</span>
-                </div>
-                <button class="salesperson-chat-widget__close-button" id="chatCloseButton">×</button>
-              </div>
-              <div class="salesperson-chat-widget__messages" id="chat-messages">
-                <div class="salesperson-chat-widget__message salesperson-chat-widget__message--ai">
-                  <p>読み込み中...</p>
-                </div>
-              </div>
-              <div class="salesperson-chat-widget__input-container">
-                <input type="text" class="salesperson-chat-widget__input" id="chat-input" placeholder="メッセージを入力...">
-                <button class="salesperson-chat-widget__send-button" id="send-button">送信</button>
-              </div>
-            `;
+      // customer情報の取得 (変更なし)
+      this.customerData = JSON.parse(
+        document.getElementById("shopify-customer-data").textContent
+      );
 
-            this.messagesContainer = document.getElementById('chat-messages');
-            this.chatInput = document.getElementById('chat-input');
-            this.sendButton = document.getElementById('send-button');
-            this.closeButton = document.getElementById('chatCloseButton');
-          }
+      this.messageContent = '';
+      this.apiUrl = 'http://localhost/v1/chat-messages';
+      this.apiKey = 'app-df1Jgjg4mHdJFatZeEatdyGN';
+      this.isTyping = false;
 
-          setupEventListeners() {
-            this.sendButton.addEventListener('click', () => this.sendMessage());
-            this.chatInput.addEventListener('keypress', (e) => {
-              if (e.key === 'Enter') {
-                this.sendMessage();
-              }
-            });
-            this.closeButton.addEventListener('click', () => this.closeChat());
-            this.toggleButton.addEventListener('click', () => this.toggleChat());
-          }
+      this.initialize();
+    }
 
-          closeChat() {
-            this.chatWidget.classList.add('salesperson-chat-widget--hidden');
-            this.toggleButton.classList.add('salesperson-chat-widget__toggle-button--visible');
-          }
+    initialize() {
+      this.renderInitialUI();
+      this.setupEventListeners();
 
-          toggleChat() {
-            this.chatWidget.classList.toggle('salesperson-chat-widget--hidden');
-            this.toggleButton.classList.toggle('salesperson-chat-widget__toggle-button--visible');
-            if (!this.chatWidget.classList.contains('salesperson-chat-widget--hidden')) {
-              this.chatInput.focus();
-              this.updateMessagesDisplay();
-            }
-          }
+      // --- (3) 過去履歴があればUIに反映、無ければ初期メッセージ送信 ---
+      if (this.messages.length > 0) {
+        // 過去のやり取りを表示してスクロール位置を調整
+        this.updateMessagesDisplay();
+      } else {
+        // 新規会話として初回メッセージを送る(例)
+        this.sendInitialMessage();
+      }
+    }
 
-          showTypingIndicator() {
-            if (!this.isTyping) {
-              this.isTyping = true;
-              const typingElement = document.createElement('div');
-              typingElement.className = 'salesperson-chat-widget__typing';
-              typingElement.innerHTML = `
-                <div class="salesperson-chat-widget__typing-dot"></div>
-                <div class="salesperson-chat-widget__typing-dot"></div>
-                <div class="salesperson-chat-widget__typing-dot"></div>
-              `;
-              this.messagesContainer.appendChild(typingElement);
-              this.scrollToBottom();
-            }
-          }
+    renderInitialUI() {
+      this.chatWidget.innerHTML = `
+        <div class="salesperson-chat-widget__header">
+          <div class="salesperson-chat-widget__header-title">
+            <div class="salesperson-chat-widget__avatar">👩</div>
+            <span>接客アシスタント</span>
+          </div>
+          <button class="salesperson-chat-widget__close-button" id="chatCloseButton">×</button>
+        </div>
+        <div class="salesperson-chat-widget__messages" id="chat-messages">
+          <!-- （もし this.messages に過去履歴があればここに描画される） -->
+        </div>
+        <div class="salesperson-chat-widget__input-container">
+          <input type="text" class="salesperson-chat-widget__input" id="chat-input" placeholder="メッセージを入力...">
+          <button class="salesperson-chat-widget__send-button" id="send-button">送信</button>
+        </div>
+      `;
 
-          hideTypingIndicator() {
-            if (this.isTyping) {
-              this.isTyping = false;
-              const typingElement = this.messagesContainer.querySelector('.salesperson-chat-widget__typing');
-              if (typingElement) {
-                typingElement.remove();
-              }
-            }
-          }
+      this.messagesContainer = document.getElementById('chat-messages');
+      this.chatInput = document.getElementById('chat-input');
+      this.sendButton = document.getElementById('send-button');
+      this.closeButton = document.getElementById('chatCloseButton');
+    }
 
-          async sendMessage() {
-            const message = this.chatInput.value.trim();
-            if (!message) return;
+    setupEventListeners() {
+      this.sendButton.addEventListener('click', () => this.sendMessage());
+      this.chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          this.sendMessage();
+        }
+      });
+      this.closeButton.addEventListener('click', () => this.closeChat());
+      this.toggleButton.addEventListener('click', () => this.toggleChat());
+    }
 
-            this.appendUserMessage(message);
-            this.chatInput.value = '';
-            this.scrollToBottom();
-            this.showTypingIndicator();
+    closeChat() {
+      this.chatWidget.classList.add('salesperson-chat-widget--hidden');
+      this.toggleButton.classList.add('salesperson-chat-widget__toggle-button--visible');
+    }
 
-            const responseElement = this.createResponseElement();
-            await this.sendMessageToAPI(message, responseElement);
-            this.hideTypingIndicator();
-          }
+    toggleChat() {
+      this.chatWidget.classList.toggle('salesperson-chat-widget--hidden');
+      this.toggleButton.classList.toggle('salesperson-chat-widget__toggle-button--visible');
+      if (!this.chatWidget.classList.contains('salesperson-chat-widget--hidden')) {
+        this.chatInput.focus();
+        this.updateMessagesDisplay();
+      }
+    }
 
-          appendUserMessage(message) {
-            const messageElement = document.createElement('div');
-            messageElement.className = 'salesperson-chat-widget__message salesperson-chat-widget__message--user';
-            messageElement.textContent = message;
-            this.messagesContainer.appendChild(messageElement);
-            this.messages.push({
-              type: 'user',
-              content: message
-            });
-          }
+    showTypingIndicator() {
+      if (!this.isTyping) {
+        this.isTyping = true;
+        const typingElement = document.createElement('div');
+        typingElement.className = 'salesperson-chat-widget__typing';
+        typingElement.innerHTML = `
+          <div class="salesperson-chat-widget__typing-dot"></div>
+          <div class="salesperson-chat-widget__typing-dot"></div>
+          <div class="salesperson-chat-widget__typing-dot"></div>
+        `;
+        this.messagesContainer.appendChild(typingElement);
+        this.scrollToBottom();
+      }
+    }
 
-          createResponseElement() {
-            const element = document.createElement('div');
-            element.className = 'salesperson-chat-widget__message salesperson-chat-widget__message--ai';
-            this.messagesContainer.appendChild(element);
-            return element;
-          }
+    hideTypingIndicator() {
+      if (this.isTyping) {
+        this.isTyping = false;
+        const typingElement = this.messagesContainer.querySelector('.salesperson-chat-widget__typing');
+        if (typingElement) {
+          typingElement.remove();
+        }
+      }
+    }
 
-          scrollToBottom() {
-            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
-          }
+    async sendMessage() {
+      const message = this.chatInput.value.trim();
+      if (!message) return;
 
-          async sendMessageToAPI(message, responseElement) {
-            try {
-              const response = await this.makeAPIRequest(message);
-              await this.handleStreamingResponse(response, responseElement);
-            } catch (error) {
-              this.handleError(error, responseElement);
-            }
-          }
+      this.appendUserMessage(message);
+      this.chatInput.value = '';
+      this.scrollToBottom();
+      this.showTypingIndicator();
 
-          async makeAPIRequest(message) {
-            const response = await fetch(this.apiUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`
-              },
-              body: JSON.stringify({
-                conversation_id: this.currentConversationId,
-                inputs: {
-                  products_data: JSON.stringify(this.productsData),
-                  order_data: JSON.stringify(this.orderData)
-                },
-                query: message,
-                response_mode: "streaming",
-                user: "user"
-              })
-            });
+      const responseElement = this.createResponseElement();
+      await this.sendMessageToAPI(message, responseElement);
+      this.hideTypingIndicator();
+    }
 
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(`HTTP error! status: ${response.status}, message: ${JSON.stringify(errorData)}`);
-            }
+    appendUserMessage(message) {
+      const messageElement = document.createElement('div');
+      messageElement.className = 'salesperson-chat-widget__message salesperson-chat-widget__message--user';
+      messageElement.textContent = message;
+      this.messagesContainer.appendChild(messageElement);
 
-            return response;
-          }
+      // --- (4) ローカルの this.messages に格納 ---
+      this.messages.push({
+        type: 'user',
+        content: message
+      });
 
-          async handleStreamingResponse(response, responseElement) {
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let accumulatedResponse = '';
+      // リアルタイムに更新表示
+      this.saveMessagesToLocalStorage();
+    }
 
-            try {
-              while (true) {
-                const {value, done} = await reader.read();
-                if (done) break;
+    createResponseElement() {
+      const element = document.createElement('div');
+      element.className = 'salesperson-chat-widget__message salesperson-chat-widget__message--ai';
+      this.messagesContainer.appendChild(element);
+      return element;
+    }
 
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
+    scrollToBottom() {
+      this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+    }
 
-                for (const line of lines) {
-                  if (line.startsWith('data: ')) {
-                    const jsonStr = line.slice(6);
-                    if (jsonStr.trim() === '[DONE]') continue;
+    async sendMessageToAPI(message, responseElement) {
+      try {
+        const response = await this.makeAPIRequest(message);
+        await this.handleStreamingResponse(response, responseElement);
+      } catch (error) {
+        this.handleError(error, responseElement);
+      }
+    }
 
-                    try {
-                      const data = JSON.parse(jsonStr);
-                      if (data.conversation_id && !this.currentConversationId) {
-                        this.currentConversationId = data.conversation_id;
-                      }
-                      if (data.event === 'message') {
-                        accumulatedResponse += data.answer || '';
-                        responseElement.innerHTML = `<div style="white-space: pre-wrap;">${accumulatedResponse}</div>`;
-                        this.scrollToBottom();
-                      }
-                    } catch (e) {
-                      console.error('JSON parse error:', e, 'for line:', line);
-                    }
-                  }
+    async makeAPIRequest(message) {
+      const response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          // --- (5) 保持した conversation_id を送信。無ければ null になる ---
+          conversation_id: this.currentConversationId,
+          inputs: {
+            customer_name: this.customerData.customer_name,
+            customer_id: this.customerData.customer_id
+          },
+          query: message,
+          response_mode: "streaming",
+          user: "user"
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${JSON.stringify(errorData)}`);
+      }
+
+      return response;
+    }
+
+    async handleStreamingResponse(response, responseElement) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedResponse = '';
+
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const jsonStr = line.slice(6);
+              if (jsonStr.trim() === '[DONE]') continue;
+
+              try {
+                const data = JSON.parse(jsonStr);
+
+                // --- (6) conversation_id を受け取ったら localStorage に保存 ---
+                if (data.conversation_id && !this.currentConversationId) {
+                  this.currentConversationId = data.conversation_id;
+                  localStorage.setItem('conversation_id', this.currentConversationId);
                 }
-              }
 
-              // ストリーミング完了後にメッセージを履歴に追加
-              if (accumulatedResponse) {
-                this.messages.push({
-                  type: 'ai',
-                  content: accumulatedResponse
-                });
-                this.updateMessagesDisplay();
-              }
-            } catch (error) {
-              console.error('Streaming error:', error);
-              this.handleError(error, responseElement);
-            }
-          }
-
-          handleError(error, responseElement) {
-            console.error('Fetch error:', error);
-            let errorMessage = 'サーバーとの通信中にエラーが発生しました。';
-            
-            if (error.name === 'TypeError') {
-              errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
-            } else if (error.message.includes('HTTP error!')) {
-              errorMessage = `サーバーエラーが発生しました。${error.message}`;
-            }
-            
-            responseElement.innerHTML = `<p>${errorMessage}</p>`;
-          }
-
-          async sendInitialMessage() {
-            try {
-              const response = await this.makeAPIRequest("こんにちは。商品情報を教えてください。");
-              await this.handleInitialStreamingResponse(response);
-            } catch (error) {
-              this.handleInitialError(error);
-            }
-          }
-
-          async handleInitialStreamingResponse(response) {
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let accumulatedResponse = '';
-
-            try {
-              while (true) {
-                const {value, done} = await reader.read();
-                if (done) break;
-
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
-
-                for (const line of lines) {
-                  if (line.startsWith('data: ')) {
-                    const jsonStr = line.slice(6);
-                    if (jsonStr.trim() === '[DONE]') continue;
-
-                    try {
-                      const data = JSON.parse(jsonStr);
-                      if (data.conversation_id && !this.currentConversationId) {
-                        this.currentConversationId = data.conversation_id;
-                      }
-                      if (data.event === 'message') {
-                        accumulatedResponse += data.answer || '';
-                        this.messageContent = accumulatedResponse;
-                        this.updateMessagesDisplay();
-                      }
-                    } catch (e) {
-                      console.error('JSON parse error:', e, 'for line:', line);
-                    }
-                  }
+                // event: 'message' の場合、LLMが返すHTMLを追記
+                if (data.event === 'message') {
+                  accumulatedResponse += data.answer || '';
+                  responseElement.innerHTML = accumulatedResponse;
+                  this.scrollToBottom();
                 }
+              } catch (e) {
+                console.error('JSON parse error:', e, 'for line:', line);
               }
-
-              // 初期メッセージを履歴に追加
-              if (accumulatedResponse) {
-                this.messages.push({
-                  type: 'ai',
-                  content: accumulatedResponse
-                });
-                this.updateMessagesDisplay();
-              }
-            } catch (error) {
-              console.error('Initial streaming error:', error);
-              this.handleInitialError(error);
             }
-          }
-
-          updateMessagesDisplay() {
-            const messagesHtml = this.messages.map(message => `
-              <div class="salesperson-chat-widget__message salesperson-chat-widget__message--${message.type}">
-                <div style="white-space: pre-wrap;">${message.content}</div>
-              </div>
-            `).join('');
-            
-            this.messagesContainer.innerHTML = messagesHtml;
-            this.scrollToBottom();
-          }
-
-          handleInitialError(error) {
-            console.error('Fetch error:', error);
-            let errorMessage = 'サーバーとの通信中にエラーが発生しました。';
-            
-            if (error.name === 'TypeError') {
-              errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
-            } else if (error.message.includes('HTTP error!')) {
-              errorMessage = `サーバーエラーが発生しました。${error.message}`;
-            }
-            
-            this.messagesContainer.innerHTML = `
-              <div class="salesperson-chat-widget__message salesperson-chat-widget__message--ai">
-                <p>${errorMessage}</p>
-              </div>
-            `;
           }
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
-          try {
-            new ChatWidget();
-          } catch (error) {
-            console.error("Error loading chat widget:", error);
-            document.getElementById("chatWidget").innerHTML = `
-              <div class="salesperson-chat-widget__message salesperson-chat-widget__message--ai">
-                <p>エラーが発生しました: ${error.message}</p>
-              </div>
-            `;
+        // 最終的に得られたHTMLを履歴に保存
+        if (accumulatedResponse) {
+          this.messages.push({
+            type: 'ai',
+            content: accumulatedResponse
+          });
+          this.updateMessagesDisplay();
+        }
+      } catch (error) {
+        console.error('Streaming error:', error);
+        this.handleError(error, responseElement);
+      }
+    }
+
+    handleError(error, responseElement) {
+      console.error('Fetch error:', error);
+      let errorMessage = 'サーバーとの通信中にエラーが発生しました。';
+
+      if (error.name === 'TypeError') {
+        errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+      } else if (error.message.includes('HTTP error!')) {
+        errorMessage = `サーバーエラーが発生しました。${error.message}`;
+      }
+
+      responseElement.innerHTML = `<p>${errorMessage}</p>`;
+    }
+
+    async sendInitialMessage() {
+      // 初期メッセージ送信例
+      try {
+        const response = await this.makeAPIRequest("こんにちわ！おすすめの商品をトップ3を教えてください");
+        await this.handleInitialStreamingResponse(response);
+      } catch (error) {
+        this.handleInitialError(error);
+      }
+    }
+
+    async handleInitialStreamingResponse(response) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedResponse = '';
+
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const jsonStr = line.slice(6);
+              if (jsonStr.trim() === '[DONE]') continue;
+
+              try {
+                const data = JSON.parse(jsonStr);
+
+                if (data.conversation_id && !this.currentConversationId) {
+                  this.currentConversationId = data.conversation_id;
+                  localStorage.setItem('conversation_id', this.currentConversationId);
+                }
+
+                if (data.event === 'message') {
+                  accumulatedResponse += data.answer || '';
+                  this.messageContent = accumulatedResponse;
+                  this.updateMessagesDisplay();
+                }
+              } catch (e) {
+                console.error('JSON parse error:', e, 'for line:', line);
+              }
+            }
           }
-        });
-      </script>
+        }
+
+        if (accumulatedResponse) {
+          this.messages.push({
+            type: 'ai',
+            content: accumulatedResponse
+          });
+          this.updateMessagesDisplay();
+        }
+      } catch (error) {
+        console.error('Initial streaming error:', error);
+        this.handleInitialError(error);
+      }
+    }
+
+    updateMessagesDisplay() {
+      const messagesHtml = this.messages.map(message => `
+        <div class="salesperson-chat-widget__message salesperson-chat-widget__message--${message.type}">
+          ${message.content}
+        </div>
+      `).join('');
+
+      this.messagesContainer.innerHTML = messagesHtml;
+      this.scrollToBottom();
+
+      // --- (7) メッセージ一覧を localStorage に保存 ---
+      this.saveMessagesToLocalStorage();
+    }
+
+    saveMessagesToLocalStorage() {
+      localStorage.setItem('chat_messages', JSON.stringify(this.messages));
+    }
+
+    handleInitialError(error) {
+      console.error('Fetch error:', error);
+      let errorMessage = 'サーバーとの通信中にエラーが発生しました。';
+
+      if (error.name === 'TypeError') {
+        errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+      } else if (error.message.includes('HTTP error!')) {
+        errorMessage = `サーバーエラーが発生しました。${error.message}`;
+      }
+
+      this.messagesContainer.innerHTML = `
+        <div class="salesperson-chat-widget__message salesperson-chat-widget__message--ai">
+          <p>${errorMessage}</p>
+        </div>
+      `;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function() {
+    try {
+      new ChatWidget();
+    } catch (error) {
+      console.error("Error loading chat widget:", error);
+      document.getElementById("chatWidget").innerHTML = `
+        <div class="salesperson-chat-widget__message salesperson-chat-widget__message--ai">
+          <p>エラーが発生しました: ${error.message}</p>
+        </div>
+      `;
+    }
+  });
+</script>
+
     {% else %}
       <div class="salesperson-chat-widget__header">
         <div class="salesperson-chat-widget__header-title">

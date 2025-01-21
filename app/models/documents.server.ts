@@ -1,9 +1,9 @@
 // app/models/documents.server.ts
 
-import type { Product, Order } from "../services/shopify/types";
-import { CHUNK_SEPARATOR_SYMBOL, CHUNK_MAX_TOKENS } from "../lib/const";
+import type { Product, Order } from "../integrations/shopify/types";
+import { CHUNK_SEPARATOR_SYMBOL, CHUNK_MAX_TOKENS } from "../lib/constants";
 import { prisma } from "../db.server";
-import { DifyService } from "../services/dify/DifyService";
+import { DifyService } from "../integrations/dify/DifyService";
 
 // /* ------------------------------------------------------------------
 //  * 1. Data cleansing functions

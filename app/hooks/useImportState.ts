@@ -1,7 +1,7 @@
 // app/hooks/useImportStates.ts
 import { useState } from "react";
-import { KNOWLEDGE_TYPE_TO_STATE_KEY } from "../services/dify/types";
-import { KnowledgeType } from "../services/dify/types";
+import { KNOWLEDGE_TYPE_TO_STATE_KEY } from "../integrations/dify/types";
+import { KnowledgeType } from "../integrations/dify/types";
 
 interface ImportState {
   isLoading: boolean;

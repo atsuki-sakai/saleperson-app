@@ -1,7 +1,7 @@
 import { PlanConfig, LITE_PLAN, MONTHLY_PLAN, ANNUAL_PLAN } from "./types";
 // ##################################################################
 // ローカルモ�の設定: trueの場合はローカルのDifyを使用します、Dockerも必ず起動してください。
-export const LOCAL_MODE = true;
+export const LOCAL_MODE = process.env.NODE_ENV === "development";
 // ##################################################################
 
 

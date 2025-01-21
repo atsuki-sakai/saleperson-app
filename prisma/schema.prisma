@@ -88,12 +88,27 @@ model Document {
   createdAt DateTime @default(now()) @map("createdAt")
   /// レコードの最終更新日時
   updatedAt DateTime @updatedAt @map("updatedAt")
+  /// ########## 追加予定 ##########
+  /// 作成中のドキュメントのバッチID
+  /// batchIds  String[] @default([])
+  /// 作成中のドキュメントの進行状況
+  // status    DocumentStatus @default(PENDING)
   store     Store    @relation(fields: [storeId], references: [storeId])
 
   @@index([storeId])
   @@map("document")
 }
 
+/// ########## 追加予定 ##########
+// enum DocumentStatus {
+//   PENDING    // まだ同期していない
+//   SYNCING    // データ作成/送信中
+//   INDEXING   // Difyでindex中
+//   COMPLETED  // 完了
+//   ERROR      // エラー
+// }
+
+/// ########## 廃止予定 ##########
 /// バックグラウンドタスクの状態を管理するモデル
 model Task {
   /// タスクの一意識別子（UUID）
