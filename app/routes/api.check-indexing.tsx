@@ -2,8 +2,8 @@
 
 import { json } from "@remix-run/node";
 import { ActionFunctionArgs } from "@remix-run/node";
-import { DifyService } from "../../integrations/dify/DifyService";
-import { prisma } from "../../db.server";
+import { DifyService } from "../integrations/dify/DifyService";
+import { prisma } from "../db.server";
 
 export async function action({ request }: ActionFunctionArgs) {
   if (request.method !== "POST") {

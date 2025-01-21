@@ -142,7 +142,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           status: "IN_PROGRESS",
         },
       });
-      console.log("origin", origin);
       fetch(`${origin}/api/sync-products`, {
         method: "POST",
         headers: {
@@ -289,7 +288,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         },
       });
       console.log("taskQueue", taskQueue);
-
       taskQueue.map((task) => {
         fetch(`${origin}/api/check-indexing`, {
           method: "POST",

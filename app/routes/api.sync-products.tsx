@@ -1,12 +1,12 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { prisma } from "../../db.server";
-import { shopifyGraphQLCall } from "../../integrations/shopify/shopifyGraphQlCall";
-import { q_FetchOrders } from "../../integrations/shopify/query/q_fetchOrders";
-import { DifyService } from "../../integrations/dify/DifyService";
-import { CHUNK_SEPARATOR_SYMBOL } from "../../integrations/dify/const";
-import { ICreateDocumentByTextRequest } from "../../integrations/dify/types";
-import { convertOrdersToText } from "../../integrations/helper/data-clensing";
+import { prisma } from "../db.server";
+import { shopifyGraphQLCall } from "../integrations/shopify/shopifyGraphQlCall";
+import { q_FetchProducts } from "../integrations/shopify/query/q_fetchProducts";
+import { DifyService } from "../integrations/dify/DifyService";
+import { CHUNK_SEPARATOR_SYMBOL } from "../integrations/dify/constants";
+import { ICreateDocumentByTextRequest } from "../integrations/dify/types";
+import { convertProductsToText } from "../integrations/helper/converter";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -55,23 +55,23 @@ async function safeShopifyGraphQLCall(
  * Difyに送信（dataset & document作成）する処理をまとめたヘルパー
  *  - 300件のチャンクごとに呼び出したい
  */
-async function sendOrdersToDify(
+async function sendProductsToDify(
   difyService: DifyService,
   shopDomain: string,
-  orders: any[], // 300件分 or 残り
+  products: any[], // 300件分 or 残り
   startIndex: number,
   endIndex: number,
 ) {
   const chunkTask = await prisma.task.create({
     data: {
       storeId: shopDomain,
-      type: "ORDER_CHUNK_SYNC",
+      type: "PRODUCT_CHUNK_SYNC",
       status: "IN_PROGRESS",
     },
   });
 
   let datasetId: string | null = null;
-  const datasetName = `${shopDomain}-Orders`;
+  const datasetName = `${shopDomain}-Products`;
   const prismaStore = await prisma.store.findFirst({
     where: {
       storeId: shopDomain,
@@ -79,28 +79,26 @@ async function sendOrdersToDify(
     select: {
       documents: {
         where: {
-          type: "ORDERS",
+          type: "PRODUCTS",
           name: datasetName,
         },
         select: {
           datasetId: true,
-          type: true,
         },
       },
     },
   });
 
-  if (
-    prismaStore?.documents.some((doc: { type: any }) => doc.type === "ORDERS")
-  ) {
-    datasetId =
-      prismaStore.documents.find((doc: { type: any }) => doc.type === "ORDERS")
-        ?.datasetId ?? null;
+  if (prismaStore?.documents.length && prismaStore.documents.length > 0) {
+    datasetId = prismaStore.documents[0].datasetId;
+    console.log("datasetId", datasetId);
+    console.log("prismaStore", prismaStore);
+    console.log("prismaStore.documents", prismaStore.documents);
   } else {
     // datasetを作成
     const dataset = await difyService.dataset.createDataset({
-      name: `Orders`,
-      description: `Orders Dataset`,
+      name: `Products`,
+      description: `Products Dataset`,
       indexing_technique: "high_quality",
       permission: "only_me",
     });
@@ -109,8 +107,8 @@ async function sendOrdersToDify(
       data: {
         datasetId: dataset.id,
         name: datasetName,
+        type: "PRODUCTS",
         storeId: shopDomain,
-        type: "ORDERS",
       },
     });
   }
@@ -128,12 +126,10 @@ async function sendOrdersToDify(
   // const longText = summaries.join(CHUNK_SEPARATOR_SYMBOL);
   // console.log("longText", longText);
 
-  console.log("orders", orders);
-
   // documentを作成
   const createDocumentRequest: ICreateDocumentByTextRequest = {
     name: `${startIndex + 1}~${endIndex}`,
-    text: await convertOrdersToText(orders), // 300件ぶんのテキスト
+    text: await convertProductsToText(products, shopDomain), // 300件ぶんのテキスト
     indexing_technique: "high_quality",
     doc_form: "hierarchical_model",
     doc_language: "ja",
@@ -190,20 +186,20 @@ async function sendOrdersToDify(
 /**
  * 全商品の取得と、300件ずつDifyに送信
  */
-async function fetchAllOrders(
+async function fetchAllProducts(
   shopDomain: string,
   accessToken: string,
   pageSize: number,
 ) {
   let count = 1; // ページ読み込みカウント（何ページ目か）
-  let currntFetchOrderCount = 0; // どこまで取得したかの数
-  let allOrders: any[] = []; // 全注文を入れておく配列（必要なら返す）
+  let currntFetchProductCount = 0; // どこまで取得したかの数
+  let allProducts: any[] = []; // 全商品を入れておく配列（必要なら返す）
   let cursor: string | null = null;
 
   // ▼ ここから追加・変更 ▼
   // 300件ずつ送信したいためのバッファとインデックス管理
   const CHUNK_SIZE = 100;
-  let orderBuffer: any[] = []; // 300件を貯める一時バッファ
+  let productBuffer: any[] = []; // 300件を貯める一時バッファ
   let fetchedTotal = 0; // 何件フェッチ(=バッファ)したかの累計
   // ▲ ここまで追加・変更 ▲
 
@@ -213,8 +209,8 @@ async function fetchAllOrders(
   );
 
   while (true) {
-    currntFetchOrderCount = pageSize * count;
-    console.log("fetchAllOrders count", currntFetchOrderCount);
+    currntFetchProductCount = pageSize * count;
+    console.log("fetchAllProducts count", currntFetchProductCount);
 
     // 5秒スリープ
     await delay(5000);
@@ -223,30 +219,28 @@ async function fetchAllOrders(
     const data = await safeShopifyGraphQLCall(
       shopDomain,
       accessToken,
-      q_FetchOrders,
+      q_FetchProducts,
       { cursor, pageSize },
     );
     count++;
-    // 取得した注文
-    const edges = data?.data?.orders?.edges || [];
-    const pageInfo = data?.data?.orders?.pageInfo;
-    console.log("edges", edges);
-    console.log("pageInfo", pageInfo);
+    // 取得した商品
+    const edges = data?.data?.products?.edges || [];
+    const pageInfo = data?.data?.products?.pageInfo;
 
     // バッファに追加
     for (const edge of edges) {
-      orderBuffer.push(edge.node);
+      productBuffer.push(edge.node);
     }
 
-    // allOrders にも追加（必要があれば）
-    allOrders.push(...edges.map((e: any) => e.node));
+    // allProducts にも追加（必要があれば）
+    allProducts.push(...edges.map((e: any) => e.node));
 
     // 300件たまったらDifyへ送信（複数回溜まる場合は while で回す）
-    while (orderBuffer.length >= CHUNK_SIZE) {
-      const chunk = orderBuffer.splice(0, CHUNK_SIZE);
+    while (productBuffer.length >= CHUNK_SIZE) {
+      const chunk = productBuffer.splice(0, CHUNK_SIZE);
       fetchedTotal += CHUNK_SIZE;
 
-      await sendOrdersToDify(
+      await sendProductsToDify(
         difyService,
         shopDomain,
         chunk,
@@ -264,11 +258,11 @@ async function fetchAllOrders(
   }
 
   // ループが終わったら、300件未満の端数を送信
-  if (orderBuffer.length > 0) {
-    const leftover = orderBuffer.splice(0, orderBuffer.length);
+  if (productBuffer.length > 0) {
+    const leftover = productBuffer.splice(0, productBuffer.length);
     const startIndex = fetchedTotal; // 何件目からか
     fetchedTotal += leftover.length; // 端数を加算
-    await sendOrdersToDify(
+    await sendProductsToDify(
       difyService,
       shopDomain,
       leftover,
@@ -277,7 +271,7 @@ async function fetchAllOrders(
     );
   }
 
-  return allOrders;
+  return allProducts;
 }
 
 /**
@@ -302,7 +296,11 @@ export async function action({ request }: ActionFunctionArgs) {
 
   // 全商品を取得しつつ、300件単位でDifyへ送信
   try {
-    const allOrders = await fetchAllOrders(shopDomain, store.accessToken, 50);
+    const allProducts = await fetchAllProducts(
+      shopDomain,
+      store.accessToken,
+      50,
+    );
 
     await prisma.task.update({
       where: { id: mainTaskId },
@@ -310,17 +308,17 @@ export async function action({ request }: ActionFunctionArgs) {
         status: "COMPLETED",
       },
     });
-    console.log(`取得件数: ${allOrders.length}件`);
+    console.log(`取得件数: ${allProducts.length}件`);
 
     console.log("task updated");
 
     return json({
       success: true,
-      totalOrders: allOrders.length,
-      firstOrderTitle: allOrders[0]?.name || "(no orders)",
+      totalProducts: allProducts.length,
+      firstProductTitle: allProducts[0]?.title || "(no products)",
     });
   } catch (err: any) {
-    console.error("Error fetching all orders:", err);
+    console.error("Error fetching all products:", err);
     return json({ error: err.message || "Unknown error" }, { status: 500 });
   }
 }
