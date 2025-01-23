@@ -75,8 +75,6 @@ model Store {
 model Dataset {
   /// データセットの一意識別子（UUID）
   id        String   @id @default(uuid())
-  /// データセットのタイトル
-  name      String
   /// データセットのタイプ
   type      String
   /// 関連するストアのID（外部キー）
