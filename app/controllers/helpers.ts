@@ -1,12 +1,12 @@
-import { htmlTagRemove } from "app/lib/helper";
-import { Product } from "../../integrations/shopify/types";
-import { Order } from "../../integrations/shopify/types";
-import { CHUNK_SEPARATOR_SYMBOL } from "../../lib/constants";
 
-// ------------------------------------------
-// data-clensing.ts
-// 商品1件ずつ2秒おきにDifyへ投げ、全プロパティをテキスト化した例
-// ------------------------------------------
+import { Product } from "app/integrations/shopify/types";
+import { Order } from "app/integrations/shopify/types";
+import { CHUNK_SEPARATOR_SYMBOL } from "app/lib/constants";
+
+
+export function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /*
  * 注文をテキスト化する
@@ -211,13 +211,13 @@ export function convertOrdersToText(orders:Order[]) {
     return JSON.stringify(parsed, null, 2);
   }
   
-  
+
   /**
    * ポリシー本文を結合しつつHTMLタグ除去
    */
   export function convertPolicyToText(responseData: any): string {
     return responseData.data.shop.shopPolicies
-    .map((p: any) => `${p.title}\n\n${htmlTagRemove(p.body)}\n${CHUNK_SEPARATOR_SYMBOL}`)
+    .map((p: any) => `${p.title}\n\n${removeHtml(p.body)}\n${CHUNK_SEPARATOR_SYMBOL}`)
     .join("\n")
     .replace(/\\n/g, "\n")
     .replace(/&nbsp;/g, "")
@@ -366,5 +366,3 @@ export function convertOrdersToText(orders:Order[]) {
     // 仕上げ
     return lines.join("\n");
   }
-
-  

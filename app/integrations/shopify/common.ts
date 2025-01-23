@@ -1,21 +1,18 @@
-// app/integrations/shopify/serverApi.ts
-import fetch from "node-fetch";
-
-type ShopifyGraphQLOptions = {
+import { SHOPIFY_API_VERSION } from "app/lib/constants";
+import { delay } from "app/controllers/helpers";
+interface IShopifyGraphQLOptions {
   query: string;
-  variables?: Record<string, any>;
-};
-
-const API_VERSION = "2024-10";
+  variables: { cursor: string | null; pageSize: number };
+}
 /**
  * DBに保存済みのアクセストークン + shopDomain を使ってShopify GraphQLを直接呼び出す例
  */
 export async function shopifyGraphQLCall(
   shopDomain: string,
   accessToken: string,
-  { query, variables }: ShopifyGraphQLOptions
+  { query, variables }: IShopifyGraphQLOptions
 ) {
-  const endpoint = `https://${shopDomain}/admin/api/${API_VERSION}/graphql.json`;
+  const endpoint = `https://${shopDomain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -76,9 +73,4 @@ export async function safeShopifyGraphQLCall(
       }
     }
   }
-}
-
-
-export function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -68,8 +68,9 @@ export const DATASET_TYPE_TO_STATE_KEY: Record<string, string> = {
 
 // API - Shopify
 export const SHOPIFY_PAGE_SIZE = 50;
+export const SHOPIFY_API_VERSION = "2024-10";
 
 // Dify
-export const DATASET_INDEXING_LIMIT_SIZE = 300;
+export const DATASET_INDEXING_LIMIT_SIZE = 100;
 export const CHUNK_SEPARATOR_SYMBOL = "###";
 export const CHUNK_MAX_TOKENS = 3000;

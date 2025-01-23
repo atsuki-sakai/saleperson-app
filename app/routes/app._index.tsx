@@ -30,11 +30,9 @@ import {
   TextField,
 } from "@shopify/polaris";
 import { Dataset } from "../lib/types";
-import { htmlTagRemove } from "../lib/helper";
 import { prisma } from "../db.server";
 import { ArchiveIcon, CartIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
-import { fetchPolicies } from "../integrations/shopify/fetchPolicys";
 import { useImportStates } from "../hooks/useImportState";
 import { CHUNK_SEPARATOR_SYMBOL } from "../lib/constants";
 import { DatasetType } from "../lib/types";

@@ -1,4 +1,4 @@
-export const q_fetchPolicy = `
+export const q_fetchPolicies = `
 query getPolicies{
     shop {
         shopPolicies {

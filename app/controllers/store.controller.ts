@@ -1,4 +1,4 @@
-import { prisma } from "../../db.server";
+import { prisma } from "app/db.server";
 import type { Store } from "@prisma/client";
 
 export function createStore(store: Store){
@@ -103,3 +103,4 @@ export async function getStoreWithDatasets(storeId: string) {
     include: { datasets: true },
   });
 }
+

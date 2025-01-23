@@ -18,6 +18,7 @@ import {
   IUpdateSegmentRequest,
   IUpdateSegmentResponse,
 } from '../types';
+import { CHUNK_SEPARATOR_SYMBOL } from 'app/lib/constants';
 
 export class DocumentRepository {
   private apiClient: AxiosInstance;
@@ -206,6 +207,42 @@ export class DocumentRepository {
       return response.data;
     } catch (err) {
       this.handleError(err);
+    }
+  }
+
+  public async generateHierarchicalDocumentRequest(name: string, text: string): Promise<ICreateDocumentByTextRequest> {
+   return {
+        name: name,
+        text: text,
+        indexing_technique: 'high_quality',
+        doc_form: 'hierarchical_model',
+        doc_language: 'ja',
+        process_rule: {
+        mode: "hierarchical",
+        rules: {
+            parent_mode: "paragraph",
+            pre_processing_rules: [
+                {
+                    id: "remove_extra_spaces",
+                    enabled: true,
+                },
+                {
+                    id: "remove_urls_emails",
+                    enabled: true,
+                },
+            ],
+            segmentation: {
+                separator: CHUNK_SEPARATOR_SYMBOL,
+                max_tokens: 1000,
+                chunk_overlap: 0,
+            },
+            subchunk_segmentation: {
+                separator: "\n",
+                max_tokens: 1000,
+                chunk_overlap: 0,
+            },
+        },
+    },
     }
   }
 

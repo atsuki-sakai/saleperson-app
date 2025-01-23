@@ -3,7 +3,7 @@
 client_id = "06d118204ece9125d19ace950e69ac2f"
 name = "saleperson-app"
 handle = "saleperson-app"
-application_url = "https://instead-concord-myanmar-cardiac.trycloudflare.com"
+application_url = "https://seeking-fighter-overview-slide.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "read_products,write_products,read_orders,read_customers,read_legal_pol
 
 [auth]
 redirect_urls = [
-  "https://instead-concord-myanmar-cardiac.trycloudflare.com/auth/callback",
-  "https://instead-concord-myanmar-cardiac.trycloudflare.com/auth/shopify/callback",
-  "https://instead-concord-myanmar-cardiac.trycloudflare.com/api/auth/callback"
+  "https://seeking-fighter-overview-slide.trycloudflare.com/auth/callback",
+  "https://seeking-fighter-overview-slide.trycloudflare.com/auth/shopify/callback",
+  "https://seeking-fighter-overview-slide.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
