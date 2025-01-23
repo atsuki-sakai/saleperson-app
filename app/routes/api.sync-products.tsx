@@ -4,9 +4,10 @@ import { prisma } from "../db.server";
 import { shopifyGraphQLCall } from "../integrations/shopify/shopifyGraphQlCall";
 import { q_FetchProducts } from "../integrations/shopify/query/q_fetchProducts";
 import { DifyService } from "../integrations/dify/DifyService";
-import { CHUNK_SEPARATOR_SYMBOL } from "../integrations/dify/constants";
+import { CHUNK_SEPARATOR_SYMBOL } from "../lib/constants";
+import { DatasetType } from "../lib/types";
 import { ICreateDocumentByTextRequest } from "../integrations/dify/types";
-import { convertProductsToText } from "../integrations/helper/converter";
+import { convertProductsToText } from "../models/dify/document.utils";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -62,13 +63,13 @@ async function sendProductsToDify(
   startIndex: number,
   endIndex: number,
 ) {
-  const chunkTask = await prisma.task.create({
-    data: {
-      storeId: shopDomain,
-      type: "PRODUCT_CHUNK_SYNC",
-      status: "IN_PROGRESS",
-    },
-  });
+  // const chunkTask = await prisma.task.create({
+  //   data: {
+  //     storeId: shopDomain,
+  //     type: "PRODUCT_CHUNK_SYNC",
+  //     status: "IN_PROGRESS",
+  //   },
+  // });
 
   let datasetId: string | null = null;
   const datasetName = `${shopDomain}-Products`;
@@ -77,9 +78,9 @@ async function sendProductsToDify(
       storeId: shopDomain,
     },
     select: {
-      documents: {
+      datasets: {
         where: {
-          type: "PRODUCTS",
+          type: DatasetType.PRODUCTS,
           name: datasetName,
         },
         select: {
@@ -89,11 +90,11 @@ async function sendProductsToDify(
     },
   });
 
-  if (prismaStore?.documents.length && prismaStore.documents.length > 0) {
-    datasetId = prismaStore.documents[0].datasetId;
+  if (prismaStore?.datasets.length && prismaStore.datasets.length > 0) {
+    datasetId = prismaStore.datasets[0].datasetId;
     console.log("datasetId", datasetId);
     console.log("prismaStore", prismaStore);
-    console.log("prismaStore.documents", prismaStore.documents);
+    console.log("prismaStore.datasets", prismaStore.datasets);
   } else {
     // datasetを作成
     const dataset = await difyService.dataset.createDataset({
@@ -103,11 +104,11 @@ async function sendProductsToDify(
       permission: "only_me",
     });
     datasetId = dataset.id;
-    await prisma.document.create({
+    await prisma.dataset.create({
       data: {
         datasetId: dataset.id,
         name: datasetName,
-        type: "PRODUCTS",
+        type: DatasetType.PRODUCTS,
         storeId: shopDomain,
       },
     });
@@ -165,21 +166,21 @@ async function sendProductsToDify(
     datasetId!,
     createDocumentRequest,
   );
-  await prisma.task.upsert({
-    where: { id: chunkTask.id },
-    update: {
-      batch: document.batch,
-      datasetId,
-      status: "INDEXING",
-    },
-    create: {
-      storeId: shopDomain,
-      type: "PRODUCT_CHUNK_SYNC",
-      status: "INDEXING",
-      batch: document.batch,
-      datasetId,
-    },
-  });
+  // await prisma.task.upsert({
+  //   where: { id: chunkTask.id },
+  //   update: {
+  //     batch: document.batch,
+  //     datasetId,
+  //     status: "INDEXING",
+  //   },
+  //   create: {
+  //     storeId: shopDomain,
+  //     type: "PRODUCT_CHUNK_SYNC",
+  //     status: "INDEXING",
+  //     batch: document.batch,
+  //     datasetId,
+  //   },
+  // });
   console.log("document", document);
 }
 
@@ -302,12 +303,12 @@ export async function action({ request }: ActionFunctionArgs) {
       50,
     );
 
-    await prisma.task.update({
-      where: { id: mainTaskId },
-      data: {
-        status: "COMPLETED",
-      },
-    });
+    // await prisma.task.update({
+    //   where: { id: mainTaskId },
+    //   data: {
+    //     status: "COMPLETED",
+    //   },
+    // });
     console.log(`取得件数: ${allProducts.length}件`);
 
     console.log("task updated");

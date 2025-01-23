@@ -1,4 +1,4 @@
-import { prisma } from "../db.server";
+import { prisma } from "../../db.server";
 import type { Store } from "@prisma/client";
 
 export function createStore(store: Store){
@@ -66,8 +66,7 @@ export async function getStoreInfo(storeId: string) {
         iconUrl: true,
         tone: true,
         blockingKeywords: true,
-        datasetId: true,
-        documents: true,
+        datasets: true,
         metaFieldDescription: true
     }
   });
@@ -95,5 +94,12 @@ export function deleteStore(storeId: string) {
     where: {
       storeId,
     },
+  });
+}
+
+export async function getStoreWithDatasets(storeId: string) {
+  return await prisma.store.findUnique({
+    where: { storeId },
+    include: { datasets: true },
   });
 }

@@ -17,14 +17,15 @@ export type PlanConfig = {
   description: string;
 };
 
-export type KnowledgeType =
-  | "products"
-  | "orders"
-  | "policy"
-  | "faq"
-  | "product_meta_fields"
-  | "task_sync"
-  | "system_prompt";
+export enum DatasetType {
+  PRODUCTS = "products",
+  ORDERS = "orders",
+  POLICY = "policy",
+  FAQ = "faq",
+  PRODUCT_META_FIELDS = "product_meta_fields",
+  TASK_SYNC = "task_sync",
+  SYSTEM_PROMPT = "system_prompt",
+}
 
 /// Shopifyストアの設定とメタデータ
 export interface Store {
@@ -43,11 +44,11 @@ export interface Store {
   updatedAt: Date;
   faqContent: string | null;
   metaFieldDescription: string | null;
-  documents: Document[];
+  datasets: Dataset[];
 }
 
-/// ストアのドキュメント
-export interface Document {
+/// ストアのデータセット
+export interface Dataset {
   id: string;
   name: string;
   text: string;
@@ -59,12 +60,20 @@ export interface Document {
 
 // Component
 export type ActionResponse = {
-      success: true;
-      type: KnowledgeType;
-      store?: Store;
-      error?: string
-    };
+  success: true;
+  type: DatasetType;
+  store?: Store;
+  error?: string;
+};
 
 export interface IncludeData {
   title: string;
+}
+
+export enum DatasetIndexingStatus {
+  PENDING = "PENDING",
+  PROCESSING = "PROCESSING",
+  INDEXING = "INDEXING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
 }

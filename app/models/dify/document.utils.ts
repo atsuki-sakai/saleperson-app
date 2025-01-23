@@ -1,6 +1,7 @@
+import { htmlTagRemove } from "app/lib/helper";
 import { Product } from "../../integrations/shopify/types";
 import { Order } from "../../integrations/shopify/types";
-import { CHUNK_SEPARATOR_SYMBOL } from "../dify/constants";
+import { CHUNK_SEPARATOR_SYMBOL } from "../../lib/constants";
 
 // ------------------------------------------
 // data-clensing.ts
@@ -10,7 +11,7 @@ import { CHUNK_SEPARATOR_SYMBOL } from "../dify/constants";
 /*
  * 注文をテキスト化する
  */
-export async function convertOrdersToText(orders:Order[]) {
+export function convertOrdersToText(orders:Order[]) {
     const convertedOrders = orders.map((order: Order)=>{
       return buildFullOrderText(order).concat(CHUNK_SEPARATOR_SYMBOL);
     });
@@ -209,6 +210,20 @@ export async function convertOrdersToText(orders:Order[]) {
     // 例として JSONをきれいに表示
     return JSON.stringify(parsed, null, 2);
   }
+  
+  
+  /**
+   * ポリシー本文を結合しつつHTMLタグ除去
+   */
+  export function convertPolicyToText(responseData: any): string {
+    return responseData.data.shop.shopPolicies
+    .map((p: any) => `${p.title}\n\n${htmlTagRemove(p.body)}\n${CHUNK_SEPARATOR_SYMBOL}`)
+    .join("\n")
+    .replace(/\\n/g, "\n")
+    .replace(/&nbsp;/g, "")
+    .trim();
+  }
+
 
   /**
    * Difyで返却されるSummary JSONを、改行区切りのテキストへ変換する関数。
@@ -351,3 +366,5 @@ export async function convertOrdersToText(orders:Order[]) {
     // 仕上げ
     return lines.join("\n");
   }
+
+  

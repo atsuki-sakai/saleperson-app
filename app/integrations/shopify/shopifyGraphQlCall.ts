@@ -6,6 +6,7 @@ type ShopifyGraphQLOptions = {
   variables?: Record<string, any>;
 };
 
+const API_VERSION = "2024-10";
 /**
  * DBに保存済みのアクセストークン + shopDomain を使ってShopify GraphQLを直接呼び出す例
  */
@@ -14,8 +15,7 @@ export async function shopifyGraphQLCall(
   accessToken: string,
   { query, variables }: ShopifyGraphQLOptions
 ) {
-  const endpoint = `https://${shopDomain}/admin/api/2024-10/graphql.json`; 
-  // ↑ APIバージョンは適宜変更
+  const endpoint = `https://${shopDomain}/admin/api/${API_VERSION}/graphql.json`;
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -36,4 +36,49 @@ export async function shopifyGraphQLCall(
 
   const json = await res.json();
   return json;
+}
+
+
+// APIのレートリミットで429が返ってきた場合にリトライするラッパー
+export async function safeShopifyGraphQLCall(
+  shopDomain: string,
+  accessToken: string,
+  query: string,
+  variables: { cursor: string | null; pageSize: number },
+  baseSleepMs = 3000,
+): Promise<any> {
+  let retryCount = 0;
+  let sleepTime = baseSleepMs;
+
+  while (true) {
+    try {
+      const data = await shopifyGraphQLCall(shopDomain, accessToken, {
+        query,
+        variables,
+      });
+      return data;
+    } catch (error: any) {
+      if (
+        typeof error.message === "string" &&
+        (error.message.includes("429") ||
+          error.message.includes("Too Many Requests"))
+      ) {
+        console.error(
+          `[WARN] Throttled error detected. Retry count=${retryCount}`,
+        );
+        retryCount += 1;
+        sleepTime = sleepTime * 1.5; // Exponential backoff
+        await delay(sleepTime);
+        console.log("sleepTime", sleepTime);
+        continue;
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+
+
+export function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

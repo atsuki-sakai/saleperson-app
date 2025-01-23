@@ -1,4 +1,5 @@
 import { PlanConfig, LITE_PLAN, MONTHLY_PLAN, ANNUAL_PLAN } from "./types";
+
 // ##################################################################
 // ローカルモ�の設定: trueの場合はローカルのDifyを使用します、Dockerも必ず起動してください。
 export const LOCAL_MODE = process.env.NODE_ENV === "development";
@@ -54,12 +55,8 @@ export const PLAN_CONFIGS: PlanConfig[] = [
 ];
 
 
-// Dify - Common
-export const CHUNK_SEPARATOR_SYMBOL = "=====データの区切り=====";
-export const CHUNK_MAX_TOKENS = 3000;
-
-// Dify - Knowledge
-export const KNOWLEDGE_TYPE_TO_STATE_KEY: Record<string, string> = {
+// Dify - Dataset
+export const DATASET_TYPE_TO_STATE_KEY: Record<string, string> = {
     products: "products",
     orders: "orders",
     policy: "policy",
@@ -67,6 +64,12 @@ export const KNOWLEDGE_TYPE_TO_STATE_KEY: Record<string, string> = {
     product_meta_fields: "product_meta_fields",
     system_prompt: "system_prompt",
   };
-  
 
 
+// API - Shopify
+export const SHOPIFY_PAGE_SIZE = 50;
+
+// Dify
+export const DATASET_INDEXING_LIMIT_SIZE = 300;
+export const CHUNK_SEPARATOR_SYMBOL = "###";
+export const CHUNK_MAX_TOKENS = 3000;

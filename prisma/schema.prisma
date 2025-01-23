@@ -9,7 +9,6 @@ datasource db {
   url      =  env("DATABASE_URL")
 }
 
-
 model Session {
   id            String    @id
   shop          String
@@ -54,7 +53,7 @@ model Store {
   tone                 String?
   /// チャットでブロックするキーワード
   blockingKeywords     String?
-  /// ストアのデータセットID(１ストアに１つのデータセットID)
+  /// ストアのデータセットID(１ストアに複数のデータセットID)
   datasetId            String?
   /// チャットウィジェットの色設定
   chatColor            String?
@@ -66,19 +65,19 @@ model Store {
   faqContent           String?
   /// 商品のメタフィールドの説明(メタフィールドがある場合のみ)
   metaFieldDescription String?
-  documents            Document[]
+  datasets            Dataset[]
 
   @@index([storeId])
   @@map("store")
 }
 
-/// FAQやその他のナレッジベースとなるドキュメントを保存
-model Document {
-  /// ドキュメントの一意識別子（UUID）
+/// FAQやその他のナレッジベースとなるデータセットを保存
+model Dataset {
+  /// データセットの一意識別子（UUID）
   id        String   @id @default(uuid())
-  /// ドキュメントのタイトル
+  /// データセットのタイトル
   name      String
-  /// ドキュメントのタイプ
+  /// データセットのタイプ
   type      String
   /// 関連するストアのID（外部キー）
   storeId   String
@@ -88,55 +87,21 @@ model Document {
   createdAt DateTime @default(now()) @map("createdAt")
   /// レコードの最終更新日時
   updatedAt DateTime @updatedAt @map("updatedAt")
-  /// ########## 追加予定 ##########
-  /// 作成中のドキュメントのバッチID
-  /// batchIds  String[] @default([])
-  /// 作成中のドキュメントの進行状況
-  // status    DocumentStatus @default(PENDING)
+  /// 作成中のデータセットのバッチID
+  batchIds  String[] @default([])
+  /// 作成中のデータセットの進行状況
+  status    DatasetIndexingStatus @default(PENDING)
   store     Store    @relation(fields: [storeId], references: [storeId])
-
+  
   @@index([storeId])
-  @@map("document")
+  @@map("dataset")
 }
 
-/// ########## 追加予定 ##########
-// enum DocumentStatus {
-//   PENDING    // まだ同期していない
-//   SYNCING    // データ作成/送信中
-//   INDEXING   // Difyでindex中
-//   COMPLETED  // 完了
-//   ERROR      // エラー
-// }
-
-/// ########## 廃止予定 ##########
-/// バックグラウンドタスクの状態を管理するモデル
-model Task {
-  /// タスクの一意識別子（UUID）
-  id            String     @id @default(uuid())
-  /// 関連するストアのID
-  storeId       String
-  /// タスクの種類
-  type          String
-  /// タスクの状態
-  status        TaskStatus @default(PENDING)
-  /// datasetのID
-  datasetId     String?
-  /// バッチ処理用のバッチID
-  batch         String?
-  /// レコードの作成日時
-  createdAt     DateTime   @default(now())
-  /// レコードの最終更新日時
-  updatedAt     DateTime   @updatedAt
-
-  @@index([storeId])
-  @@map("task")
+enum DatasetIndexingStatus {
+  PENDING    // まだ同期していない
+  SYNCING    // データ作成/送信中
+  INDEXING   // Difyでindex中
+  COMPLETED  // 完了
+  ERROR      // エラー
 }
 
-/// タスクの状態を表す列挙型
-enum TaskStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  ERROR
-  INDEXING
-}

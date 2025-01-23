@@ -1,4 +1,5 @@
 import { authenticate } from "../../shopify.server";
+import { q_FetchOrders } from "./query/q_fetchOrders";
 import { Order } from "./types";
 
 interface FetchOrdersOptions {
@@ -14,7 +15,8 @@ export const fetchOrders = async (
   request: Request, 
   options: FetchOrdersOptions = {}
 ): Promise<{ orders: Order[], hasMore: boolean, nextCursor?: string }> => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+  const accessToken = session.accessToken;
 
   // クエリフィルターの構築
   let queryFilters = [];
@@ -31,54 +33,7 @@ export const fetchOrders = async (
   const queryString = queryFilters.length > 0 ? queryFilters.join(" AND ") : "";
 
   const response = await admin.graphql(
-    `#graphql
-    query getOrders($cursor: String, $query: String) {
-      orders(first: 100, after: $cursor, query: $query) {
-        edges {
-          node {
-            id
-            createdAt
-            note
-            name
-            customer {
-              id
-              displayName
-              email
-              phone
-              note
-            }
-            currentTotalPriceSet {
-              presentmentMoney {
-                amount
-                currencyCode
-              }
-            }
-            currentSubtotalLineItemsQuantity
-            tags
-            lineItems(first: 100) {
-              edges {
-                node {
-                  id
-                  title
-                  quantity
-                  variantTitle
-                  originalTotalSet {
-                    presentmentMoney {
-                      amount
-                      currencyCode
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-        pageInfo {
-          hasNextPage
-          endCursor
-        }
-      }
-    }`,
+    q_FetchOrders,
     {
       variables: {
         cursor: options.cursor,

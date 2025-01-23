@@ -1,9 +1,12 @@
-// app/routes/app._index.tsx
-
 import { useEffect, useState } from "react";
 import { json } from "@remix-run/node";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import type { ActionResponse } from "../lib/types";
+// import {
+//   importPolicies,
+//   importFaq,
+//   importProductMeta,
+// } from "../models/dify/document.server";
 import {
   useLoaderData,
   useActionData,
@@ -12,7 +15,6 @@ import {
 } from "@remix-run/react";
 import { ImportCard, SyncCard } from "../components/ui";
 import { LocalModeCard } from "../components/common";
-import { upsertPolicy } from "../models/documents.server";
 import {
   Page,
   Layout,
@@ -27,6 +29,7 @@ import {
   Divider,
   TextField,
 } from "@shopify/polaris";
+import { Dataset } from "../lib/types";
 import { htmlTagRemove } from "../lib/helper";
 import { prisma } from "../db.server";
 import { ArchiveIcon, CartIcon } from "@shopify/polaris-icons";
@@ -34,17 +37,7 @@ import { authenticate } from "../shopify.server";
 import { fetchPolicies } from "../integrations/shopify/fetchPolicys";
 import { useImportStates } from "../hooks/useImportState";
 import { CHUNK_SEPARATOR_SYMBOL } from "../lib/constants";
-// import {
-//   upsertOrders,
-//   upsertPolicy,
-//   upsertFaq,
-//   upsertProductMeta,
-// } from "../models/documents.server";
-import type { KnowledgeType } from "../lib/types";
-// import {
-//   clensingProductDataToText,
-//   clensingOrderDataToText,
-// } from "../models/documents.server";
+import { DatasetType } from "../lib/types";
 const storePolicyIncludeData = [
   { title: "返品と返金ポリシー" },
   { title: "プライバシーポリシー" },
@@ -54,7 +47,6 @@ const storePolicyIncludeData = [
   { title: "特定商取引法に基づく表記" },
   { title: "購入オプションのキャンセルポリシー" },
 ];
-import { KNOWLEDGE_TYPE_TO_STATE_KEY } from "../integrations/dify/types";
 
 const productIncludeData = [
   { title: "商品名" },
@@ -102,46 +94,27 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       storeId: session.shop,
     },
     include: {
-      documents: true,
-    },
-  });
-  const taskQueue = await prisma.task.findMany({
-    where: {
-      storeId: session.shop,
-      type: "PRODUCT_CHUNK_SYNC",
-    },
-    select: {
-      datasetId: true,
-      batch: true,
-      id: true,
+      datasets: true,
     },
   });
   return json({
     storeId: session.shop,
     store: store || null,
-    taskQueue: taskQueue || null,
   });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const formData = await request.formData();
-  const type = formData.get("type") as KnowledgeType;
+  const type = formData.get("type") as DatasetType;
   const origin = new URL(request.url).origin;
 
   /* -----------------------
    * type === "products"
    * -----------------------*/
 
-  if (type === "products") {
+  if (type === DatasetType.PRODUCTS) {
     try {
-      const mainTask = await prisma.task.create({
-        data: {
-          storeId: session.shop,
-          type: "PRODUCT_SYNC",
-          status: "IN_PROGRESS",
-        },
-      });
       fetch(`${origin}/api/sync-products`, {
         method: "POST",
         headers: {
@@ -149,7 +122,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         },
         body: JSON.stringify({
           shopDomain: session.shop,
-          mainTaskId: mainTask.id,
         }),
       });
       return json({
@@ -157,7 +129,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         type,
         message:
           "商品同期を開始しました。バックグラウンドで処理が継続されます。",
-        taskId: mainTask.id,
       });
     } catch (error: any) {
       console.error(error);
@@ -169,19 +140,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         error: `同期の開始に失敗しました: ${errorMessage}`,
       };
     }
-  } else if (type === "orders") {
+  } else if (type === DatasetType.ORDERS) {
     /* -----------------------
      * type === "ORDERS"
      * -----------------------*/
     try {
-      const mainTask = await prisma.task.create({
-        data: {
-          storeId: session.shop,
-          type: "ORDER_SYNC",
-          status: "IN_PROGRESS",
-        },
-      });
-      console.log("origin", origin);
       fetch(`${origin}/api/sync-orders`, {
         method: "POST",
         headers: {
@@ -189,7 +152,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         },
         body: JSON.stringify({
           shopDomain: session.shop,
-          mainTaskId: mainTask.id,
         }),
       });
       return json({
@@ -197,7 +159,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         type,
         message:
           "注文同期を開始しました。バックグラウンドで処理が継続されます。",
-        taskId: mainTask.id,
       });
     } catch (error: any) {
       const errorMessage = error?.message || "注文同期の開始に失敗しました";
@@ -208,27 +169,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         error: errorMessage,
       };
     }
-  } else if (type === "policy") {
+  } else if (type === DatasetType.POLICY) {
     /* -----------------------
      * type === "policy"
      * -----------------------*/
     try {
-      const response = await fetchPolicies(request);
-      const policies = await response.json();
-
-      const convertedNewPolicy = policies.data.shop.shopPolicies
-        .map(
-          (p: any) =>
-            `${p.title}##\n\n${htmlTagRemove(p.body)}\n${CHUNK_SEPARATOR_SYMBOL}`,
-        )
-        .join("\n")
-        .replace(/\\n/g, "\n")
-        .replace(/&nbsp;/g, "")
-        .trim();
-
-      const store = await upsertPolicy(session.shop, convertedNewPolicy);
-
-      return json({ success: true, type, store: store });
+      // const store = await importPolicies(session.shop, request);
+      return json({ success: true, type, store: null });
     } catch (error: any) {
       const errorMessage = error?.message || "不明なエラーが発生しました";
       return {
@@ -238,14 +185,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         error: errorMessage,
       };
     }
-  } else if (type === "faq") {
+  } else if (type === DatasetType.FAQ) {
     try {
       const currentFaq = formData.get("currentFaq") as string;
-
-      console.log("currentFaq", currentFaq);
-
-      // const store = await upsertFaq(session.shop, currentFaq);
-
+      // const store = await importFaq(session.shop, currentFaq);
       return json({ success: true, type, store: null });
     } catch (error: any) {
       console.error("FAQ Creation Error:", error);
@@ -256,52 +199,53 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         error: error.message || "不明なエラーが発生しました",
       };
     }
-  } else if (type === "product_meta_fields") {
+  } else if (type === DatasetType.PRODUCT_META_FIELDS) {
     try {
       const metaFieldDescription = formData.get(
         "product_meta_fields",
       ) as string;
-
-      // const store = await upsertProductMeta(session.shop, metaFieldDescription);
-
-      return json({ success: true, type: "product_meta_fields", store: null });
+      // const store = await importProductMeta(session.shop, metaFieldDescription);
+      return json({
+        success: true,
+        type: DatasetType.PRODUCT_META_FIELDS,
+        store: null,
+      });
     } catch (error: any) {
       const errorMessage = error?.message || "不明なエラーが発生しました";
       return json({
         success: false,
-        type: "product_meta_fields",
+        type: DatasetType.PRODUCT_META_FIELDS,
         store: null,
         error: errorMessage,
       });
     }
-  } else if (type == "task_sync") {
+  } else if (type === DatasetType.TASK_SYNC) {
     try {
-      const taskQueue = await prisma.task.findMany({
-        where: {
-          storeId: session.shop,
-          type: "PRODUCT_CHUNK_SYNC",
-        },
-        select: {
-          datasetId: true,
-          batch: true,
-          id: true,
-        },
-      });
-      console.log("taskQueue", taskQueue);
-      taskQueue.map((task) => {
-        fetch(`${origin}/api/check-indexing`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            datasetId: task.datasetId,
-            batch: task.batch,
-            taskId: task.id,
-            storeId: session.shop,
-          }),
-        });
-      });
+      // const taskQueue = await prisma.task.findMany({
+      //   where: {
+      //     storeId: session.shop,
+      //   },
+      //   select: {
+      //     datasetId: true,
+      //     batch: true,
+      //     id: true,
+      //   },
+      // });
+      // console.log("taskQueue", taskQueue);
+      // taskQueue.map((task) => {
+      //   fetch(`${origin}/api/check-indexing`, {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //     },
+      //     body: JSON.stringify({
+      //       datasetId: task.datasetId,
+      //       batch: task.batch,
+      //       taskId: task.id,
+      //       storeId: session.shop,
+      //     }),
+      //   });
+      // });
 
       return json({ success: true, type, store: null });
     } catch (error: any) {
@@ -317,7 +261,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
  * ------------------------------------------- */
 
 export default function Index() {
-  const { store, taskQueue } = useLoaderData<typeof loader>();
+  const { store } = useLoaderData<typeof loader>();
   const actionData = useActionData<ActionResponse>();
   const navigation = useNavigation();
   const [currentStore, setCurrentStore] = useState<any | null>(store);
@@ -331,20 +275,20 @@ export default function Index() {
   });
 
   // Compute derived properties
-  const hasProductKnowledge = currentStore?.documents?.some(
-    (k: { type: string }) => k.type === "products",
+  const hasProductKnowledge = currentStore?.datasets?.some(
+    (d: { type: string }) => d.type === DatasetType.PRODUCTS,
   );
-  const hasOrderKnowledge = currentStore?.documents?.some(
-    (k: { type: string }) => k.type === "orders",
+  const hasOrderKnowledge = currentStore?.datasets?.some(
+    (d: { type: string }) => d.type === DatasetType.ORDERS,
   );
-  const hasStorePolicy = currentStore?.documents?.some(
-    (k: { type: string }) => k.type === "policy",
+  const hasStorePolicy = currentStore?.datasets?.some(
+    (d: { type: string }) => d.type === DatasetType.POLICY,
   );
-  const hasMetaField = currentStore?.documents?.some(
-    (k: { type: string }) => k.type === "product_meta_fields",
+  const hasMetaField = currentStore?.datasets?.some(
+    (d: { type: string }) => d.type === DatasetType.PRODUCT_META_FIELDS,
   );
-  const hasFaq = currentStore?.documents?.some(
-    (k: { type: string }) => k.type === "faq",
+  const hasFaq = currentStore?.datasets?.some(
+    (d: { type: string }) => d.type === DatasetType.FAQ,
   );
 
   // 成功メッセージの表示状態を管理
@@ -368,13 +312,13 @@ export default function Index() {
     if (
       actionData &&
       [
-        "products",
-        "orders",
-        "policy",
-        "faq",
-        "product_meta_fields",
-        "task_sync",
-        "system_prompt",
+        DatasetType.PRODUCTS,
+        DatasetType.ORDERS,
+        DatasetType.POLICY,
+        DatasetType.FAQ,
+        DatasetType.PRODUCT_META_FIELDS,
+        DatasetType.TASK_SYNC,
+        DatasetType.SYSTEM_PROMPT,
       ].includes(actionData.type)
     ) {
       const { type, success, error } = actionData;
@@ -403,7 +347,7 @@ export default function Index() {
   useEffect(() => {
     if (navigation.state === "submitting") {
       const formData = navigation.formData;
-      const type = formData?.get("type") as KnowledgeType;
+      const type = formData?.get("type") as DatasetType;
       if (type) {
         setProcessing(type);
       }
@@ -499,12 +443,9 @@ export default function Index() {
                         description="商品の説明文、バリエーション、価格などの情報からAIアシスタントが商品についての回答を生成できるようにナレッジを作成します。"
                         icon={ArchiveIcon}
                         includeDatas={productIncludeData}
-                        type="products"
+                        type={DatasetType.PRODUCTS}
                         store={currentStore}
-                        isLoading={
-                          taskQueue.length > 0 ||
-                          importStates.products.isLoading
-                        }
+                        isLoading={importStates.products.isLoading}
                         status={importStates.products.status}
                         progress={importStates.products.progress}
                         importStates={importStates}
@@ -516,12 +457,9 @@ export default function Index() {
                         description="商品の説明文、バリエーション、価格などの情報からAIアシスタントが商品についての回答を生成できるようにナレッジを作成します。"
                         icon={ArchiveIcon}
                         includeDatas={productIncludeData}
-                        type="products"
+                        type={DatasetType.PRODUCTS}
                         store={currentStore}
-                        isLoading={
-                          taskQueue.length > 0 ||
-                          importStates.products.isLoading
-                        }
+                        isLoading={importStates.products.isLoading}
                         status={importStates.products.status}
                         progress={importStates.products.progress}
                         isCreated={false}
@@ -536,11 +474,9 @@ export default function Index() {
                         description="過去の注文履歴、顧客の購買パターンなどからAIアシスタントが注文についての回答を生成できるようにナレッジを作成します。"
                         icon={CartIcon}
                         includeDatas={orderIncludeData}
-                        type="orders"
+                        type={DatasetType.ORDERS}
                         store={currentStore}
-                        isLoading={
-                          taskQueue.length > 0 || importStates.orders.isLoading
-                        }
+                        isLoading={importStates.orders.isLoading}
                         status={importStates.orders.status}
                         progress={importStates.orders.progress}
                         importStates={importStates}
@@ -552,11 +488,9 @@ export default function Index() {
                         description="過去の注文履歴、顧客の購買パターンなどからAIアシスタントが注文についての回答を生成できるようにナレッジを作成します。"
                         icon={CartIcon}
                         includeDatas={orderIncludeData}
-                        type="orders"
+                        type={DatasetType.ORDERS}
                         store={currentStore}
-                        isLoading={
-                          taskQueue.length > 0 || importStates.orders.isLoading
-                        }
+                        isLoading={importStates.orders.isLoading}
                         status={importStates.orders.status}
                         progress={importStates.orders.progress}
                         isCreated={false}
@@ -571,11 +505,9 @@ export default function Index() {
                         description="ストアのポリシーを元にAIアシスタントがポリシーについての回答を生成できるようにナレッジを作成します。"
                         icon={ArchiveIcon}
                         includeDatas={storePolicyIncludeData}
-                        type="policy"
+                        type={DatasetType.POLICY}
                         store={currentStore}
-                        isLoading={
-                          taskQueue.length > 0 || importStates.policy.isLoading
-                        }
+                        isLoading={importStates.policy.isLoading}
                         status={importStates.policy.status}
                         progress={importStates.policy.progress}
                         importStates={importStates}
@@ -587,11 +519,9 @@ export default function Index() {
                         description="ストアのポリシーを元にAIアシスタントがポリシーについての回答を生成できるようにナレッジを作成します。"
                         icon={ArchiveIcon}
                         includeDatas={storePolicyIncludeData}
-                        type="policy"
+                        type={DatasetType.POLICY}
                         store={currentStore}
-                        isLoading={
-                          taskQueue.length > 0 || importStates.policy.isLoading
-                        }
+                        isLoading={importStates.policy.isLoading}
                         status={importStates.policy.status}
                         progress={importStates.policy.progress}
                         isCreated={false}
@@ -704,12 +634,11 @@ export default function Index() {
                             : "よくある質問のナレッジを作成"}
                         </Button>
                       </Box>
-                      {taskQueue.length > 0 ||
-                        (importStates.faq.status === "processing" && (
-                          <Box paddingBlockStart="300">
-                            <ProgressBar progress={importStates.faq.progress} />
-                          </Box>
-                        ))}
+                      {importStates.faq.status === "processing" && (
+                        <Box paddingBlockStart="300">
+                          <ProgressBar progress={importStates.faq.progress} />
+                        </Box>
+                      )}
                       {importStates.faq.status === "completed" &&
                         showSuccessMessage.faq && (
                           <Box paddingBlockStart="300">
@@ -721,7 +650,7 @@ export default function Index() {
                           </Box>
                         )}
                       {importStates.faq.status === "error" &&
-                        actionData?.type === "faq" && (
+                        actionData?.type === DatasetType.FAQ && (
                           <Box paddingBlockStart="300">
                             <Banner
                               title="エラーが発生しました"
@@ -750,7 +679,7 @@ export default function Index() {
                       <input
                         type="hidden"
                         name="type"
-                        value="product_meta_fields"
+                        value={DatasetType.PRODUCT_META_FIELDS}
                       />
                       <input
                         type="hidden"
@@ -764,7 +693,7 @@ export default function Index() {
                       />
                       <TextField
                         label="設定する事でAIアシスタントは商品のメタフィールドを元に回答を生成します。"
-                        name="product_meta_fields"
+                        name={DatasetType.PRODUCT_META_FIELDS}
                         value={directKnowledgeData.product_meta_fields || ""}
                         maxLength={2000}
                         onChange={(value) =>
@@ -800,20 +729,20 @@ export default function Index() {
                           />
                         </Box>
                       )}
-                      {taskQueue.length > 0 ||
-                        (importStates.product_meta_fields.status ===
-                          "completed" &&
-                          showSuccessMessage.product_meta_fields && (
-                            <Box paddingBlockStart="300">
-                              <Banner title="作成完了" tone="success">
-                                <p>
-                                  商品メタフィールドのナレッジが正常に作成されました。
-                                </p>
-                              </Banner>
-                            </Box>
-                          ))}
+                      {importStates.product_meta_fields.status ===
+                        "completed" &&
+                        showSuccessMessage.product_meta_fields && (
+                          <Box paddingBlockStart="300">
+                            <Banner title="作成完了" tone="success">
+                              <p>
+                                商品メタフィールドのナレッジが正常に作成されました。
+                              </p>
+                            </Banner>
+                          </Box>
+                        )}
                       {importStates.product_meta_fields.status === "error" &&
-                        actionData?.type === "product_meta_fields" && (
+                        actionData?.type ===
+                          DatasetType.PRODUCT_META_FIELDS && (
                           <Box paddingBlockStart="300">
                             <Banner
                               title="エラーが発生しました"
