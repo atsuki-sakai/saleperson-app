@@ -3,7 +3,7 @@
 client_id = "06d118204ece9125d19ace950e69ac2f"
 name = "saleperson-app"
 handle = "saleperson-app"
-application_url = "https://minutes-reads-mines-speaking.trycloudflare.com"
+application_url = "https://yale-snapshot-exams-contracting.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "read_products,write_products,read_orders,read_customers,read_legal_pol
 
 [auth]
 redirect_urls = [
-  "https://minutes-reads-mines-speaking.trycloudflare.com/auth/callback",
-  "https://minutes-reads-mines-speaking.trycloudflare.com/auth/shopify/callback",
-  "https://minutes-reads-mines-speaking.trycloudflare.com/api/auth/callback"
+  "https://yale-snapshot-exams-contracting.trycloudflare.com/auth/callback",
+  "https://yale-snapshot-exams-contracting.trycloudflare.com/auth/shopify/callback",
+  "https://yale-snapshot-exams-contracting.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
