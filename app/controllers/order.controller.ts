@@ -1,138 +1,242 @@
-import { getStoreAccessToken } from "app/controllers/store.controller";
-import { ShopifyService } from "app/integrations/shopify/ShopifyService";
-import { DifyService } from "app/integrations/dify/DifyService";    
-import { DatasetType } from "app/lib/types";
-import { getStoreWithDatasets } from "app/controllers/store.controller";
-import { convertOrdersToText } from "app/controllers/helpers";
-import { ICreateDocumentByTextRequest, ICreateDocumentByTextResponse } from "app/integrations/dify/types";
-import { CHUNK_SEPARATOR_SYMBOL } from "app/lib/constants";
-import { delay } from "app/controllers/helpers";
-import { safeShopifyGraphQLCall } from "app/integrations/shopify/common";
-import { q_FetchOrders } from "app/integrations/shopify/query";
-import { DATASET_INDEXING_LIMIT_SIZE } from "app/lib/constants";
 
-
+import { safeShopifyGraphQLCall } from "../integrations/shopify/common";
+import { q_FetchOrders } from "../integrations/shopify/query/q_fetchOrders";
+import { DifyService } from "../integrations/dify/DifyService";
+import { convertOrdersToText } from "../lib/helpers";
+import { DatasetIndexingStatus, DatasetType } from "../lib/types";
+import { delay } from "../lib/helpers";
+import type { Order, PageInfo } from "../integrations/shopify/types";
+import { DATASET_INDEXING_LIMIT_SIZE } from "../lib/constants";
+import { getStoreWithDatasets } from "../controllers/store.controller";
+import {
+  upsertDataset,
+  createDataset,
+} from "../controllers/dataset.controller";
+import { ShopifyGraphQLError, DifyProcessingError } from "../lib/errors";
 /**
- * 全商品の取得と、300件ずつDifyに送信
+ * すべてのOrderをページネーションで取得しながらDifyにインデックス化し、
+ * 取得したOrderの配列を返す。
+ *
+ * @param shopDomain - Shopifyのショップドメイン
+ * @param accessToken - Shopifyのアクセストークン
+ * @param pageSize - 1回のGraphQL呼び出しで取得するOrder数
  */
-export async function importOrders(
+export async function fetchAndIndexAllOrders(
     shopDomain: string,
     accessToken: string,
     pageSize: number,
-  ) {
-    let count = 1; // ページ読み込みカウント（何ページ目か）
-    let currntFetchOrderCount = 0; // どこまで取得したかの数
-    let allOrders: any[] = []; // 全注文を入れておく配列（必要なら返す）
-    let cursor: string | null = null;
-  
-    let orderBuffer: any[] = []; // 300件を貯める一時バッファ
-    let fetchedTotal = 0; // 何件フェッチ(=バッファ)したかの累計
-  
+  ): Promise<Order[]> {
     const difyService = new DifyService(
       process.env.DIFY_API_KEY!,
       process.env.DIFY_BASE_URL!,
     );
   
+    let page = 1;
+    let cursor: string | null = null;
+    let allOrders: Order[] = [];
+    let orderBuffer: Order[] = [];
+    let indexedTotalCount = 0;
+  
     while (true) {
-      currntFetchOrderCount = pageSize * count;
-      console.log("fetchAllOrders count", currntFetchOrderCount);
+      console.log(`=== Fetching page ${page} (pageSize: ${pageSize}) ===`);
+      page++;
   
-      // 5秒スリープ
-      await delay(5000);
-  
-      // pageSizeごとにGraphQLを呼び出す
-      const data = await safeShopifyGraphQLCall(
+      // 1. Shopifyからデータを取得
+      const { orders, pageInfo } = await paginateOrders(
         shopDomain,
         accessToken,
-        q_FetchOrders,
-        { cursor, pageSize },
+        cursor,
+        pageSize,
       );
-      count++;
-      // 取得した注文
-      const edges = data?.data?.orders?.edges || [];
-      const pageInfo = data?.data?.orders?.pageInfo;
   
-      // バッファに追加
-      for (const edge of edges) {
-        orderBuffer.push(edge.node);
-      }
+      // 2. 結果をバッファ＆全体配列に格納
+      orderBuffer.push(...orders);
+      allOrders.push(...orders);
   
-      // allOrders にも追加（必要があれば）
-      allOrders.push(...edges.map((e: any) => e.node));
-
-      console.log("allOrders", allOrders.length);
-  
-      // 300件たまったらDifyへ送信（複数回溜まる場合は while で回す）
+      // 3. 指定サイズ(DATASET_INDEXING_LIMIT_SIZE)まで溜まったらDify送信
       while (orderBuffer.length >= DATASET_INDEXING_LIMIT_SIZE) {
         const chunk = orderBuffer.splice(0, DATASET_INDEXING_LIMIT_SIZE);
-        console.log("chunk", chunk);
-        fetchedTotal += DATASET_INDEXING_LIMIT_SIZE;
-        console.log("fetchedTotal", fetchedTotal);
-        console.log("convertOrdersToText", typeof convertOrdersToText(chunk));
-        sendTextDataToDify(
+        indexedTotalCount += chunk.length;
+  
+        await sendOrdersToDify(
           difyService,
           shopDomain,
-          convertOrdersToText(chunk),
-          fetchedTotal,
-          fetchedTotal + DATASET_INDEXING_LIMIT_SIZE,
+          chunk,
+          indexedTotalCount - chunk.length,
+          indexedTotalCount,
         );
       }
   
-      // 次のページがなければループ終了
+      // 次ページが存在しないなら終了
       if (!pageInfo?.hasNextPage) {
         break;
       }
-      // カーソルを次に進める
+  
+      // 次のカーソルをセット
       cursor = pageInfo.endCursor;
+  
+      // 連続で大量に取得するのを避けるためのウェイト（必要に応じて変更）
+      await delay(5000);
     }
   
-    // ループが終わったら、300件未満の端数を送信
+    // 4. 端数バッファが残っていればDify送信
     if (orderBuffer.length > 0) {
-      const leftover = orderBuffer.splice(0, orderBuffer.length);
-      const startIndex = fetchedTotal; // 何件目からか
-      fetchedTotal += leftover.length; // 端数を加算
-      await sendTextDataToDify(
+      indexedTotalCount += orderBuffer.length;
+      await sendOrdersToDify(
         difyService,
         shopDomain,
-        convertOrdersToText(leftover),
-        startIndex,
-        fetchedTotal,
+        orderBuffer,
+        indexedTotalCount - orderBuffer.length,
+        indexedTotalCount,
       );
+      orderBuffer = [];
     }
   
     return allOrders;
   }
   
-  async function sendTextDataToDify(
+  /**
+   * 1回分のGraphQL呼び出しを行い、Ordersとページ情報を返却する。
+   *
+   * @param shopDomain - Shopifyのショップドメイン
+   * @param accessToken - Shopifyのアクセストークン
+   * @param cursor - 前回の最後のOrderのカーソル
+   * @param pageSize - 1回のGraphQL呼び出しで取得するOrder数
+   */
+  async function paginateOrders(
+    shopDomain: string,
+    accessToken: string,
+    cursor: string | null,
+    pageSize: number,
+  ): Promise<{ orders: Order[]; pageInfo: PageInfo }> {
+    const data = await fetchOrders(shopDomain, accessToken, cursor, pageSize);
+    const { orders, pageInfo } = extractOrderData(data);
+    return { orders, pageInfo };
+  }
+  
+  /**
+   * ShopifyのGraphQLエンドポイントを安全に呼び出し、
+   * 返却されたレスポンスをそのまま返す。
+   */
+  export async function fetchOrders(
+    shopDomain: string,
+    accessToken: string,
+    cursor: string | null,
+    pageSize: number,
+  ) {
+    try {
+      // GraphQL呼び出し時のパラメータ確認
+      if (!shopDomain || !accessToken) {
+        throw new ShopifyGraphQLError(
+          `Invalid parameters to fetchOrders - shopDomain: ${shopDomain}, accessToken: ${accessToken}`,
+        );
+      }
+  
+      return await safeShopifyGraphQLCall(
+        shopDomain,
+        accessToken,
+        q_FetchOrders,
+        {
+          cursor,
+          pageSize,
+        },
+      );
+    } catch (err: any) {
+      console.error("[fetchOrders] Error during Shopify GraphQL call:", err);
+      throw new ShopifyGraphQLError("Shopify GraphQL request failed", err);
+    }
+  }
+  
+  /**
+   * GraphQLレスポンスからOrder配列とページ情報を抽出して返す。
+   */
+  function extractOrderData(data: any): {
+    orders: Order[];
+    pageInfo: PageInfo;
+  } {
+    try {
+      const edges = data?.data?.orders?.edges || [];
+      const pageInfo = data?.data?.orders?.pageInfo;
+      const orders: Order[] = edges.map((edge: any) => edge.node);
+  
+      if (!pageInfo) {
+        throw new Error("pageInfo is missing in the response");
+      }
+  
+      return { orders, pageInfo };
+    } catch (err: any) {
+      console.error("[extractOrderData] Error extracting order data:", err);
+      throw new ShopifyGraphQLError("Invalid structure in Shopify response", err);
+    }
+  }
+  
+  /**
+   * DifyにOrder情報を送り、Dataset & Documentを作成・更新する。
+   *
+   * @param difyService - DifyServiceインスタンス
+   * @param shopDomain - Shopifyのショップドメイン
+   * @param orders - 送信対象のOrder配列
+   * @param startIndex - 送信開始Index(表示用)
+   * @param endIndex - 送信終了Index(表示用)
+   */
+  async function sendOrdersToDify(
     difyService: DifyService,
     shopDomain: string,
-    longText: string, // 300件分 or 残り
+    orders: Order[],
     startIndex: number,
     endIndex: number,
   ) {
     let datasetId: string | null = null;
-    const storeDatasets = await getStoreWithDatasets(shopDomain);
-    const orderDataset = storeDatasets?.datasets.find(
-      (dataset) => dataset.type === DatasetType.ORDERS,
-    );
   
-    if (orderDataset) {
-      datasetId = orderDataset.id;
-    } else {
-      const dataset = await difyService.dataset.createDataset({
-        name: DatasetType.ORDERS,
-        description: `${DatasetType.ORDERS} dataset`,
-      });
-      datasetId = dataset.id;
-    }
-    const createDocumentRequest =
-      await difyService.document.generateHierarchicalDocumentRequest(
-        `${startIndex + 1}~${endIndex}`,
-        longText,
+    try {
+      // 1. storeに紐づくDatasetを取得
+      const storeWithDatasets = await getStoreWithDatasets(shopDomain);
+      const existingDataset = storeWithDatasets?.datasets?.find(
+        (doc: { type: string }) => doc.type === DatasetType.ORDERS,
       );
-    await difyService.document.createDocumentByText(
-      datasetId,
-      createDocumentRequest,
-    );
-  }
+      const hasOrdersDataset = !!existingDataset;
   
+      // 2. なければ新規作成、あれば既存のDataset IDを利用
+      if (storeWithDatasets && hasOrdersDataset) {
+        datasetId = existingDataset?.datasetId ?? null;
+      } else {
+        datasetId = await createDataset(DatasetType.ORDERS, shopDomain);
+      }
+  
+      if (!datasetId) {
+        throw new Error(
+          "Dataset ID is not found (failed to create or retrieve).",
+        );
+      }
+  
+      // 3. Documentを作成しDifyに送信
+      const title = `${DatasetType.ORDERS}-${startIndex + 1}~${endIndex}`;
+      const text = convertOrdersToText(orders);
+  
+      // Document生成リクエストの準備
+      const createDocumentRequest =
+        await difyService.document.generateHierarchicalDocumentRequest(
+          {
+            name: title,
+            text: text
+          }
+        );
+      // Document作成
+      const document = await difyService.document.createDocumentByText(
+        datasetId,
+        createDocumentRequest,
+      );
+  
+      // 4. Datasetの最新状況を更新
+      await upsertDataset(
+        datasetId,
+        DatasetType.ORDERS,
+        shopDomain,
+        document.batch,
+        DatasetIndexingStatus.INDEXING,
+      );
+    } catch (err: any) {
+      console.error("[sendOrdersToDify] Error sending orders to Dify:", err);
+      throw new DifyProcessingError("Failed to send orders to Dify", err);
+    }
+  }

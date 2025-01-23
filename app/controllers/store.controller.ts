@@ -52,7 +52,13 @@ export async function getStoreAccessToken(storeId: string) {
       accessToken: true,
     }
   });
-  return store?.accessToken || null;
+  if (!store) {
+    throw new Error("Store not found");
+  }
+  if (!store.accessToken) {
+    throw new Error("Access token not found");
+  }
+  return store.accessToken;
 }
 
 export async function getStoreInfo(storeId: string) {
