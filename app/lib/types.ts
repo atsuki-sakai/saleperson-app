@@ -20,7 +20,7 @@ export type PlanConfig = {
 export enum DatasetType {
   PRODUCTS = "products",
   ORDERS = "orders",
-  POLICY = "policy",
+  POLICIES = "policies",
   FAQ = "faq",
   PRODUCT_META_FIELDS = "product_meta_fields",
   TASK_SYNC = "task_sync",
@@ -72,8 +72,8 @@ export interface IncludeData {
 
 export enum DatasetIndexingStatus {
   PENDING = "PENDING",
-  PROCESSING = "PROCESSING",
+  SYNCING = "SYNCING",
   INDEXING = "INDEXING",
   COMPLETED = "COMPLETED",
-  FAILED = "FAILED",
+  ERROR = "ERROR",
 }

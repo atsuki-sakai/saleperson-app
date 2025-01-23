@@ -2,11 +2,6 @@ import { useEffect, useState } from "react";
 import { json } from "@remix-run/node";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import type { ActionResponse } from "../lib/types";
-// import {
-//   importPolicies,
-//   importFaq,
-//   importProductMeta,
-// } from "../models/dify/document.server";
 import {
   useLoaderData,
   useActionData,
@@ -167,13 +162,26 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         error: errorMessage,
       };
     }
-  } else if (type === DatasetType.POLICY) {
+  } else if (type === DatasetType.POLICIES) {
     /* -----------------------
      * type === "policy"
      * -----------------------*/
     try {
-      // const store = await importPolicies(session.shop, request);
-      return json({ success: true, type, store: null });
+      fetch(`${origin}/api/sync-policies`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          shopDomain: session.shop,
+        }),
+      });
+      return json({
+        success: true,
+        type,
+        message:
+          "ポリシー同期を開始しました。バックグラウンドで処理が継続されます。",
+      });
     } catch (error: any) {
       const errorMessage = error?.message || "不明なエラーが発生しました";
       return {
@@ -219,32 +227,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   } else if (type === DatasetType.TASK_SYNC) {
     try {
-      // const taskQueue = await prisma.task.findMany({
-      //   where: {
-      //     storeId: session.shop,
-      //   },
-      //   select: {
-      //     datasetId: true,
-      //     batch: true,
-      //     id: true,
-      //   },
-      // });
-      // console.log("taskQueue", taskQueue);
-      // taskQueue.map((task) => {
-      //   fetch(`${origin}/api/check-indexing`, {
-      //     method: "POST",
-      //     headers: {
-      //       "Content-Type": "application/json",
-      //     },
-      //     body: JSON.stringify({
-      //       datasetId: task.datasetId,
-      //       batch: task.batch,
-      //       taskId: task.id,
-      //       storeId: session.shop,
-      //     }),
-      //   });
-      // });
-
+      console.log("TASK_SYNC");
       return json({ success: true, type, store: null });
     } catch (error: any) {
       console.error(error);
@@ -280,7 +263,7 @@ export default function Index() {
     (d: { type: string }) => d.type === DatasetType.ORDERS,
   );
   const hasStorePolicy = currentStore?.datasets?.some(
-    (d: { type: string }) => d.type === DatasetType.POLICY,
+    (d: { type: string }) => d.type === DatasetType.POLICIES,
   );
   const hasMetaField = currentStore?.datasets?.some(
     (d: { type: string }) => d.type === DatasetType.PRODUCT_META_FIELDS,
@@ -312,7 +295,7 @@ export default function Index() {
       [
         DatasetType.PRODUCTS,
         DatasetType.ORDERS,
-        DatasetType.POLICY,
+        DatasetType.POLICIES,
         DatasetType.FAQ,
         DatasetType.PRODUCT_META_FIELDS,
         DatasetType.TASK_SYNC,
@@ -503,7 +486,7 @@ export default function Index() {
                         description="ストアのポリシーを元にAIアシスタントがポリシーについての回答を生成できるようにナレッジを作成します。"
                         icon={ArchiveIcon}
                         includeDatas={storePolicyIncludeData}
-                        type={DatasetType.POLICY}
+                        type={DatasetType.POLICIES}
                         store={currentStore}
                         isLoading={importStates.policy.isLoading}
                         status={importStates.policy.status}
@@ -517,7 +500,7 @@ export default function Index() {
                         description="ストアのポリシーを元にAIアシスタントがポリシーについての回答を生成できるようにナレッジを作成します。"
                         icon={ArchiveIcon}
                         includeDatas={storePolicyIncludeData}
-                        type={DatasetType.POLICY}
+                        type={DatasetType.POLICIES}
                         store={currentStore}
                         isLoading={importStates.policy.isLoading}
                         status={importStates.policy.status}

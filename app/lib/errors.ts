@@ -27,10 +27,36 @@ export class DifyError extends Error {
   constructor(code: DifyErrorCode | string, status: number = 400) {
     const message = code in DIFY_ERROR_CODES 
       ? DIFY_ERROR_CODES[code as DifyErrorCode]
-      : "不明なエラーが発生しました。";
+      : "Difyで不明なエラーが発生しました。";
     super(message);
     this.name = "DifyError";
     this.code = (code in DIFY_ERROR_CODES ? code : "invalid_action") as DifyErrorCode;
     this.status = status;
+  }
+}
+
+/**
+ * カスタムエラークラス：ShopifyGraphQLError
+ * GraphQL呼び出し時に特有の情報を詰め込むために利用
+ */
+export class ShopifyGraphQLError extends Error {
+  public originalError: any;
+  constructor(message: string, originalError?: any) {
+    super(message);
+    this.name = "ShopifyGraphQLError";
+    this.originalError = originalError;
+  }
+}
+
+/**
+ * カスタムエラークラス：DifyProcessingError
+ * Dify連携処理で特有の情報を詰め込むために利用
+ */
+export class DifyProcessingError extends Error {
+  public originalError: any;
+  constructor(message: string, originalError?: any) {
+    super(message);
+    this.name = "DifyProcessingError";
+    this.originalError = originalError;
   }
 }
