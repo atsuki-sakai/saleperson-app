@@ -1,5 +1,5 @@
 import { SHOPIFY_API_VERSION } from "app/lib/constants";
-import { delay } from "app/controllers/helpers";
+import { delay } from "app/lib/helpers";
 interface IShopifyGraphQLOptions {
   query: string;
   variables: { cursor: string | null; pageSize: number };

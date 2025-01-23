@@ -210,7 +210,7 @@ export class DocumentRepository {
     }
   }
 
-  public async generateHierarchicalDocumentRequest(name: string, text: string): Promise<ICreateDocumentByTextRequest> {
+  public async generateHierarchicalDocumentRequest({name, text, segMaxTokens = 4000, subSegMaxTokens = 1000, segOverlap = 50}: {name: string, text: string, segMaxTokens?: number, subSegMaxTokens?: number, segOverlap?: number}): Promise<ICreateDocumentByTextRequest> {
    return {
         name: name,
         text: text,
@@ -233,13 +233,13 @@ export class DocumentRepository {
             ],
             segmentation: {
                 separator: CHUNK_SEPARATOR_SYMBOL,
-                max_tokens: 1000,
-                chunk_overlap: 0,
+                max_tokens: segMaxTokens,
+                chunk_overlap:segOverlap,
             },
             subchunk_segmentation: {
                 separator: "\n",
-                max_tokens: 1000,
-                chunk_overlap: 0,
+                max_tokens: subSegMaxTokens,
+                chunk_overlap: segOverlap,
             },
         },
     },
