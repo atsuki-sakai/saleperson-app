@@ -73,14 +73,14 @@ export async function fetchAndIndexPolicies(
             datasetId = await createDataset(DatasetType.POLICIES, shopDomain);
         }
     
-        if (!datasetId) {
+        if (datasetId === null) {
             throw new Error(
             "Dataset ID is not found (failed to create or retrieve).",
             );
         }
     
         // 3. Documentを作成しDifyに送信
-        await Promise.all(shopPolicies.map(async (policy: Policy) => {
+        shopPolicies.map(async (policy: Policy) => {
             const createDocumentRequest =
             await difyService.document.generateHierarchicalDocumentRequest(
                 {
@@ -92,8 +92,8 @@ export async function fetchAndIndexPolicies(
                 }
             );
             const document = await difyService.document.createDocumentByText(
-            datasetId!,
-            createDocumentRequest,
+              datasetId!,
+              createDocumentRequest,
             );
             // 4. Datasetの最新状況を更新
             await upsertDataset(
@@ -103,7 +103,7 @@ export async function fetchAndIndexPolicies(
                 document.batch,
                 DatasetIndexingStatus.INDEXING,
             );
-        }));
+        });
     } catch (err: any) {
       console.error("[sendPoliciesToDify] Error sending policies to Dify:", err);
       throw new DifyProcessingError("Failed to send policies to Dify", err);
