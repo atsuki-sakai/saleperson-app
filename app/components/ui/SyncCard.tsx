@@ -1,5 +1,5 @@
 import { type IncludeData } from "../../lib/types";
-import { type KnowledgeType } from "../../lib/types";
+import { type DatasetType } from "../../lib/types";
 import { type Store } from "../../lib/types";
 import { type ActionResponse } from "../../lib/types";
 import { Form } from "@remix-run/react";
@@ -24,7 +24,7 @@ interface SyncCardProps {
   icon: React.FunctionComponent;
   description: string;
   includeDatas: IncludeData[];
-  type: KnowledgeType;
+  type: DatasetType;
   store?: Store;
   isLoading: boolean;
   status: "idle" | "processing" | "completed" | "error";
@@ -58,7 +58,7 @@ export function SyncCard({
     (state) => state.isLoading || state.status === "processing",
   );
   const errorMessage =
-    actionData?.success === false && actionData?.type === type
+    !actionData?.success && actionData?.type === type
       ? actionData?.error
       : undefined;
 

@@ -14,7 +14,7 @@ import {
   Banner,
   TextField,
 } from "@shopify/polaris";
-import { type KnowledgeType } from "../../lib/types";
+import { type DatasetType } from "../../lib/types";
 import { type Store } from "../../lib/types";
 import { type IncludeData } from "../../lib/types";
 
@@ -25,7 +25,7 @@ interface ImportCardProps {
   isLoading: boolean;
   status: "idle" | "processing" | "completed" | "error";
   progress: number;
-  type: KnowledgeType;
+  type: DatasetType;
   store?: Store;
   isCreated: boolean;
   includeDatas: IncludeData[];

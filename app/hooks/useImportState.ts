@@ -1,7 +1,7 @@
 // app/hooks/useImportStates.ts
 import { useState } from "react";
-import { KNOWLEDGE_TYPE_TO_STATE_KEY } from "../integrations/dify/types";
-import { KnowledgeType } from "../integrations/dify/types";
+import { DATASET_TYPE_TO_STATE_KEY } from "../lib/constants";
+import { DatasetType } from "../lib/types";
 
 interface ImportState {
   isLoading: boolean;
@@ -11,16 +11,16 @@ interface ImportState {
 }
 
 type UseImportStatesReturn = {
-  importStates: Record<keyof typeof KNOWLEDGE_TYPE_TO_STATE_KEY, ImportState>;
-  setProcessing: (type: KnowledgeType) => void;
-  setCompleted: (type: KnowledgeType) => void;
+  importStates: Record<keyof typeof DATASET_TYPE_TO_STATE_KEY, ImportState>;
+  setProcessing: (type: DatasetType) => void;
+  setCompleted: (type: DatasetType) => void;
   // ↓ エラーメッセージも渡せるよう変更
-  setError: (type: KnowledgeType, errorMessage?: string) => void;
+  setError: (type: DatasetType, errorMessage?: string) => void;
 };
 
 export function useImportStates(): UseImportStatesReturn {
   const [importStates, setImportStates] = useState<
-    Record<keyof typeof KNOWLEDGE_TYPE_TO_STATE_KEY, ImportState>
+    Record<keyof typeof DATASET_TYPE_TO_STATE_KEY, ImportState>
   >({
     products:            { isLoading: false, progress: 0, status: "idle" },
     orders:              { isLoading: false, progress: 0, status: "idle" },
@@ -31,8 +31,8 @@ export function useImportStates(): UseImportStatesReturn {
     task_sync:           { isLoading: false, progress: 0, status: "idle" },
   });
 
-  function setProcessing(type: KnowledgeType) {
-    const key = KNOWLEDGE_TYPE_TO_STATE_KEY[type];
+  function setProcessing(type: DatasetType) {
+    const key = DATASET_TYPE_TO_STATE_KEY[type];
     setImportStates((prev) => ({
       ...prev,
       [key]: {
@@ -45,8 +45,8 @@ export function useImportStates(): UseImportStatesReturn {
     }));
   }
   
-  function setCompleted(type: KnowledgeType) {
-    const key = KNOWLEDGE_TYPE_TO_STATE_KEY[type];
+  function setCompleted(type: DatasetType) {
+    const key = DATASET_TYPE_TO_STATE_KEY[type];
     setImportStates((prev) => ({
       ...prev,
       [key]: {
@@ -60,8 +60,8 @@ export function useImportStates(): UseImportStatesReturn {
   }
   
   // ↓ errorMessageを受け取るように
-  function setError(type: KnowledgeType, errorMessage?: string) {
-    const key = KNOWLEDGE_TYPE_TO_STATE_KEY[type];
+  function setError(type: DatasetType, errorMessage?: string) {
+    const key = DATASET_TYPE_TO_STATE_KEY[type];
     setImportStates((prev) => ({
       ...prev,
       [key]: {
