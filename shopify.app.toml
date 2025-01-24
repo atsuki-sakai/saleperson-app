@@ -3,7 +3,7 @@
 client_id = "06d118204ece9125d19ace950e69ac2f"
 name = "saleperson-app"
 handle = "saleperson-app"
-application_url = "https://cruz-jackets-pierce-novels.trycloudflare.com"
+application_url = "https://checkout-survival-thereof-retailer.trycloudflare.com"
 embedded = true
 
 [build]
@@ -17,9 +17,9 @@ scopes = "read_products,write_products,read_orders,read_customers,read_legal_pol
 
 [auth]
 redirect_urls = [
-  "https://cruz-jackets-pierce-novels.trycloudflare.com/auth/callback",
-  "https://cruz-jackets-pierce-novels.trycloudflare.com/auth/shopify/callback",
-  "https://cruz-jackets-pierce-novels.trycloudflare.com/api/auth/callback"
+  "https://checkout-survival-thereof-retailer.trycloudflare.com/auth/callback",
+  "https://checkout-survival-thereof-retailer.trycloudflare.com/auth/shopify/callback",
+  "https://checkout-survival-thereof-retailer.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
