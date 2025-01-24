@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { json } from "@remix-run/node";
+import { data, json } from "@remix-run/node";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import type { ActionResponse } from "../lib/types";
+import type { ActionResponse, DatasetIndexingStatus } from "../lib/types";
+import { Store } from "@prisma/client";
 import {
   useLoaderData,
   useActionData,
@@ -24,13 +25,13 @@ import {
   Divider,
   TextField,
 } from "@shopify/polaris";
-import { Dataset } from "../lib/types";
 import { prisma } from "../db.server";
 import { ArchiveIcon, CartIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
 import { useImportStates } from "../hooks/useImportState";
 import { CHUNK_SEPARATOR_SYMBOL } from "../lib/constants";
 import { DatasetType } from "../lib/types";
+
 const storePolicyIncludeData = [
   { title: "返品と返金ポリシー" },
   { title: "プライバシーポリシー" },
@@ -227,7 +228,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
   } else if (type === DatasetType.TASK_SYNC) {
     try {
-      console.log("TASK_SYNC");
+      fetch(`${origin}/api/check-indexing`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          shopDomain: session.shop,
+        }),
+      });
       return json({ success: true, type, store: null });
     } catch (error: any) {
       console.error(error);
@@ -256,7 +265,7 @@ export default function Index() {
   });
 
   // Compute derived properties
-  const hasProductKnowledge = currentStore?.datasets?.some(
+  const hasProductDataset = currentStore?.datasets?.some(
     (d: { type: string }) => d.type === DatasetType.PRODUCTS,
   );
   const hasOrderKnowledge = currentStore?.datasets?.some(
@@ -339,6 +348,7 @@ export default function Index() {
   const isAnyProcessing = Object.values(importStates).some(
     (state) => state.isLoading || state.status === "processing",
   );
+
   return (
     <Page>
       <BlockStack gap="800">
@@ -418,7 +428,7 @@ export default function Index() {
                     </Form>
                   </InlineStack>
                   <InlineStack gap="400">
-                    {hasProductKnowledge ? (
+                    {hasProductDataset ? (
                       <SyncCard
                         title="商品データ"
                         description="商品の説明文、バリエーション、価格などの情報からAIアシスタントが商品についての回答を生成できるようにナレッジを作成します。"

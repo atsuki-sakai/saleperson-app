@@ -1,3 +1,5 @@
+import { Store } from "@prisma/client"
+
 // App - Plan
 export type PlanFeature = {
   name: string;
@@ -27,36 +29,35 @@ export enum DatasetType {
   SYSTEM_PROMPT = "system_prompt",
 }
 
-/// Shopifyストアの設定とメタデータ
-export interface Store {
-  id: string;
-  storeId: string;
-  chatApiKey: string | null;
-  workflowApiKey: string | null;
-  systemPrompt: string | null;
-  storePrompt: string | null;
-  iconUrl: string | null;
-  tone: string | null;
-  blockingKeywords: string | null;
-  datasetId: string | null;
-  chatColor: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  faqContent: string | null;
-  metaFieldDescription: string | null;
-  datasets: Dataset[];
-}
+// /// Shopifyストアの設定とメタデータ
+// export interface Store {
+//   id: string;
+//   storeId: string;
+//   chatApiKey: string | null;
+//   workflowApiKey: string | null;
+//   systemPrompt: string | null;
+//   storePrompt: string | null;
+//   iconUrl: string | null;
+//   tone: string | null;
+//   blockingKeywords: string | null;
+//   datasetId: string | null;
+//   chatColor: string | null;
+//   createdAt: Date;
+//   updatedAt: Date;
+//   faqContent: string | null;
+//   metaFieldDescription: string | null;
+//   datasets: Dataset[];
+// }
 
-/// ストアのデータセット
-export interface Dataset {
-  id: string;
-  name: string;
-  text: string;
-  storeId: string;
-  store: Store;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// /// ストアのデータセット
+// export interface Dataset {
+//   id: string;
+//   type: string;
+//   storeId: string;
+//   datasetId: string | null;
+//   status: DatasetIndexingStatus | null;
+//   batchIds: string[];
+// }
 
 // Component
 export type ActionResponse = {

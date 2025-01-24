@@ -27,7 +27,7 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     // 1. まとめてポリシーを取得＆Difyにインデックス化
-    const allPolicies = await fetchAndIndexPolicies(shopDomain, accessToken);
+    await fetchAndIndexPolicies(shopDomain, accessToken);
     console.log("updated policies");
 
     return json({
@@ -35,7 +35,7 @@ export async function action({ request }: ActionFunctionArgs) {
     });
   } catch (err: any) {
     // 共通のエラーハンドリング
-    console.error("[action] Error fetching all orders:", err);
+    console.error("[action] Error fetching policies:", err);
 
     // カスタムエラーであれば、より詳細な情報を付与
     if (err instanceof ShopifyGraphQLError) {
