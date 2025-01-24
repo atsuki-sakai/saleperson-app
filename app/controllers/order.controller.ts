@@ -1,5 +1,5 @@
 
-import { safeShopifyGraphQLCall } from "../integrations/shopify/common";
+import { ShopifyService } from "../integrations/shopify/ShopifyService";
 import { q_FetchOrders } from "../integrations/shopify/query/q_fetchOrders";
 import { DifyService } from "../integrations/dify/DifyService";
 import { convertOrdersToText } from "../lib/helpers";
@@ -131,16 +131,21 @@ export async function fetchAndIndexAllOrders(
           `Invalid parameters to fetchOrders - shopDomain: ${shopDomain}, accessToken: ${accessToken}`,
         );
       }
+      const shopifyService = new ShopifyService(accessToken, shopDomain);
   
-      return await safeShopifyGraphQLCall(
+      const response = await shopifyService.graphQL.safeShopifyGraphQLCall(
         shopDomain,
-        accessToken,
         q_FetchOrders,
         {
           cursor,
           pageSize,
         },
       );
+      return {
+        pageSize,
+        cursor,
+        data: response.data,
+      };
     } catch (err: any) {
       console.error("[fetchOrders] Error during Shopify GraphQL call:", err);
       throw new ShopifyGraphQLError("Shopify GraphQL request failed", err);

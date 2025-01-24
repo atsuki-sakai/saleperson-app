@@ -1,5 +1,5 @@
 
-import { safeShopifyGraphQLCall } from "../integrations/shopify/common";
+import { ShopifyService } from "../integrations/shopify/ShopifyService";
 import { q_FetchProducts } from "../integrations/shopify/query/q_fetchProducts";
 import { DifyService } from "../integrations/dify/DifyService";
 import { convertProductsToText } from "../lib/helpers";
@@ -130,10 +130,11 @@ export async function fetchAndIndexAllProducts(
           `Invalid parameters to fetchProducts - shopDomain: ${shopDomain}, accessToken: ${accessToken}`,
         );
       }
+
+      const shopifyService = new ShopifyService(accessToken, shopDomain);
   
-      return await safeShopifyGraphQLCall(
+      return await shopifyService.graphQL.shopifyGraphQLCall(
         shopDomain,
-        accessToken,
         q_FetchProducts,
         {
           cursor,

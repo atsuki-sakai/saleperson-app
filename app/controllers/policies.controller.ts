@@ -5,12 +5,20 @@ import { getStoreWithDatasets } from "../controllers/store.controller";
 import { ShopPolicies } from "../integrations/shopify/types/Policies";
 import { removeHtmlAndLiquidTags } from "../lib/helpers";
 import { Policy } from "../integrations/shopify/types/Policies";
+import { q_fetchPolicies } from "../integrations/shopify/query/q_fetchPolicies";
 import {
   upsertDataset,
   createDataset,
 } from "../controllers/dataset.controller";
 import { DifyProcessingError } from "../lib/errors";
 import { ShopifyService } from "../integrations/shopify/ShopifyService";
+
+
+const difyService = new DifyService(
+  process.env.DIFY_API_KEY!,
+  process.env.DIFY_BASE_URL!,
+);
+
 /**
  * すべてのOrderをページネーションで取得しながらDifyにインデックス化し、
  * 取得したOrderの配列を返す。
@@ -23,16 +31,22 @@ export async function fetchAndIndexPolicies(
     shopDomain: string,
     accessToken: string
   ) {
-    const difyService = new DifyService(
-      process.env.DIFY_API_KEY!,
-      process.env.DIFY_BASE_URL!,
+    const shopifyService = new ShopifyService(
+      accessToken,
+      shopDomain,
+    );
+    const response = await shopifyService.graphQL.safeShopifyGraphQLCall(
+      shopDomain,
+      q_fetchPolicies,
+      { cursor: null, pageSize: 100 },
     );
 
-    const shopifyService = new ShopifyService(
-      shopDomain,
-      accessToken,
-    );
-    const shopPolicies = await shopifyService.policies.fetchAllPolicies();
+    console.log("res: ", response)
+    if (!response.data?.shop?.shopPolicies) {
+      return [];
+    }
+
+    const shopPolicies = response.data.shop.shopPolicies;
 
     await sendPoliciesToDify(
         difyService,
