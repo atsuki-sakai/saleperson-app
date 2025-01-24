@@ -6,7 +6,7 @@ import { DatasetType } from "../lib/types";
 interface ImportState {
   isLoading: boolean;
   progress: number;
-  status: "idle" | "processing" | "completed" | "error";
+  status: "idle" | "processing" | "completed" | "error" | "indexing";
   errorMessage?: string; // ← 追加
 }
 
@@ -30,6 +30,25 @@ export function useImportStates(): UseImportStatesReturn {
     system_prompt:       { isLoading: false, progress: 0, status: "idle" },
     task_sync:           { isLoading: false, progress: 0, status: "idle" },
   });
+
+    // 新しい関数を追加: インデックス状態を設定
+    function setIndexing(type: DatasetType) {
+      const key = DATASET_TYPE_TO_STATE_KEY[type];
+      setImportStates((prev) => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          isLoading: true,
+          status: "indexing",
+          progress: 75, // インデックス中は75%として表示
+          errorMessage: undefined,
+        },
+      }));
+    }
+
+    
+
+    
 
   function setProcessing(type: DatasetType) {
     const key = DATASET_TYPE_TO_STATE_KEY[type];

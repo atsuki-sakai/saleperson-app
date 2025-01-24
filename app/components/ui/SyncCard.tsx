@@ -1,6 +1,6 @@
 import { type IncludeData } from "../../lib/types";
 import { type DatasetType } from "../../lib/types";
-import { type Store } from "../../lib/types";
+import { type Store } from "@prisma/client";
 import { type ActionResponse } from "../../lib/types";
 import { Form } from "@remix-run/react";
 
@@ -27,13 +27,13 @@ interface SyncCardProps {
   type: DatasetType;
   store?: Store;
   isLoading: boolean;
-  status: "idle" | "processing" | "completed" | "error";
+  status: "idle" | "processing" | "completed" | "error" | "indexing";
   progress: number;
   importStates: {
     [key: string]: {
       isLoading: boolean;
       progress: number;
-      status: "idle" | "processing" | "completed" | "error";
+      status: "idle" | "processing" | "completed" | "error" | "indexing";
     };
   };
   actionData: ActionResponse;

@@ -15,7 +15,7 @@ import {
   TextField,
 } from "@shopify/polaris";
 import { type DatasetType } from "../../lib/types";
-import { type Store } from "../../lib/types";
+import { type Store } from "@prisma/client";
 import { type IncludeData } from "../../lib/types";
 
 interface ImportCardProps {
@@ -23,7 +23,7 @@ interface ImportCardProps {
   description: string;
   icon: React.FunctionComponent;
   isLoading: boolean;
-  status: "idle" | "processing" | "completed" | "error";
+  status: "idle" | "processing" | "completed" | "error" | "indexing";
   progress: number;
   type: DatasetType;
   store?: Store;
@@ -33,7 +33,7 @@ interface ImportCardProps {
     [key: string]: {
       isLoading: boolean;
       progress: number;
-      status: "idle" | "processing" | "completed" | "error";
+      status: "idle" | "processing" | "completed" | "error" | "indexing";
     };
   };
   actionData: ActionResponse;
