@@ -228,7 +228,7 @@ export class DocumentRepository {
                 },
                 {
                     id: "remove_urls_emails",
-                    enabled: true,
+                    enabled: false,
                 },
             ],
             segmentation: {

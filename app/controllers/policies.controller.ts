@@ -3,7 +3,7 @@ import { DifyService } from "../integrations/dify/DifyService";
 import { DatasetIndexingStatus, DatasetType } from "../lib/types";
 import { getStoreWithDatasets } from "../controllers/store.controller";
 import { ShopPolicies } from "../integrations/shopify/types/Policies";
-import { convertPoliciesToText, removeHtmlAndLiquidTags } from "../lib/helpers";
+import { removeHtmlAndLiquidTags } from "../lib/helpers";
 import { Policy } from "../integrations/shopify/types/Policies";
 import {
   upsertDataset,

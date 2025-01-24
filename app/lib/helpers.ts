@@ -23,10 +23,11 @@ export function convertOrdersToText(orders:Order[]) {
    * （商品数が多いと時間がかかります）
    */
   export async function convertProductsToText(products: Product[], shop: string) {
-    const productTexts = await Promise.all(products.map(async (product: any) => {
+    const productTexts = products.map((product: Product) => {
       const productText = buildFullProductText(product, shop);
+      console.log("productText", productText);
       return productText.concat(CHUNK_SEPARATOR_SYMBOL);
-    }));
+    });
     return productTexts.join("");
   }
   
@@ -117,6 +118,9 @@ export function convertOrdersToText(orders:Order[]) {
     if (product.featuredMedia?.preview?.image?.url) {
       featuredMediaUrl = product.featuredMedia.preview.image.url;
     }
+
+    console.log("featuredMedia Url", featuredMediaUrl); 
+    console.log('product url:', productUrl);
   
     // priceRange
     let priceRangeText = "";
@@ -126,6 +130,8 @@ export function convertOrdersToText(orders:Order[]) {
       priceRangeText = `${minP.amount} ${minP.currencyCode} ～ ${maxP.amount} ${maxP.currencyCode}`;
     }
   
+    console.log("featuredMedia Url", featuredMediaUrl); 
+    console.log("product url", productUrl);
     return `
   商品名: ${title}
   商品ID: ${productId}

@@ -66,7 +66,6 @@ export async function fetchAndIndexAllProducts(
           indexedTotalCount,
         );
       }
-  
       // 次ページが存在しないなら終了
       if (!pageInfo?.hasNextPage) {
         break;
@@ -212,7 +211,7 @@ export async function fetchAndIndexAllProducts(
       // 3. Documentを作成しDifyに送信
       const title = `${DatasetType.PRODUCTS}-${startIndex + 1}~${endIndex}`;
       const text = await convertProductsToText(products, shopDomain);
-  
+      console.log("text", text);
       // Document生成リクエストの準備
       const createDocumentRequest =
         await difyService.document.generateHierarchicalDocumentRequest(
